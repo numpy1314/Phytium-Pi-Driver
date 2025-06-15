@@ -1,0 +1,50 @@
+name: mdbook CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # 获取所有历史记录以便正确生成文档
+
+    - name: Install mdBook
+      run: |
+        cargo install mdbook --no-default-features --features search
+        mdbook --version
+
+    - name: Build documentation
+      run: |
+        # 创建默认book.toml配置（如果不存在）
+        if [ ! -f book.toml ]; then
+          cat > book.toml <<EOF
+        [book]
+        title = "飞腾派驱动开发指导书"
+        authors = ["飞腾派开发团队"]
+        
+        [output.html]
+        site-url = "/飞腾派驱动开发指导书/"
+        EOF
+        fi
+        
+        mdbook build
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v3
+
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v2
+      with:
+        path: ./book
+
+    - name: Deploy to GitHub Pages
+      if: github.ref == 'refs/heads/main'
+      uses: actions/deploy-pages@v2
