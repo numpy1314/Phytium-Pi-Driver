@@ -1,4 +1,5 @@
 [book]
-authors = ["XUKUNYUAN"]
-language = "en"
+title = "飞腾派驱动开发指导书"
+author = "opencamp 社区"
+language = "zh-CN"
 src = "src"
