@@ -1,56 +1,31 @@
-name: mdbook CI/CD
+name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:
+    branches: ["main"]
 
-# 添加全局权限设置 - 唯一修改的部分
 permissions:
-  contents: read
-  pages: write
-  id-token: write  # 解决权限错误的关键修复
+  contents: write  # 关键权限设置
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # 获取所有历史记录以便正确生成文档
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整git历史
 
-    - name: Install mdBook
-      run: |
-        cargo install mdbook --no-default-features --features search
-        mdbook --version
+      - name: Setup mdBook
+        run: |
+          curl -L https://github.com/rust-lang/mdBook/releases/download/v0.4.34/mdbook-v0.4.34-x86_64-unknown-linux-gnu.tar.gz | tar xz
+          sudo mv mdbook /usr/local/bin/
 
-    - name: Build documentation
-      run: |
-        # 创建默认book.toml配置（如果不存在）
-        if [ ! -f book.toml ]; then
-          cat > book.toml <<EOF
-        [book]
-        title = "飞腾派驱动开发指导书"
-        authors = ["飞腾派开发团队"]
-        
-        [output.html]
-        site-url = "/飞腾派驱动开发指导书/"
-        EOF
-        fi
-        
-        mdbook build
+      - name: Build
+        run: mdbook build
 
-    - name: Setup Pages
-      uses: actions/configure-pages@v3
-
-    - name: Upload artifact
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: ./book
-
-    - name: Deploy to GitHub Pages
-      if: github.ref == 'refs/heads/main'
-      uses: actions/deploy-pages@v2
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./book
+          force_orphan: true  # 强制清空gh-pages分支
