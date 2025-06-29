@@ -58,7 +58,23 @@ make install
 ```bash
 git clone  https://github.com/rcore-os/arceos.git
 ```
-待补充
 
+编译Arceos
 
+```bash
+make A=examples/helloworld ARCH=aarch64 PLATFORM=aarch64-phytium-pi  FEARURES="irq" SMP=4 LOG=info
+```
 
+之后会在example/helloword 文件夹内生成对用的可执行文件helloworld_aarch64-phytium-pi.bin
+将该文件拷贝到u盘中后将u盘插入飞腾派，之后重启飞腾派并在重启过程中按enter键 进入cmd模式此时串口变为下图
+![命令行模式](./img/0_2_2_2_enter_cmd_mode.png)
+
+执行如下指令即可在飞腾派上运行Arceos
+
+```bash
+usb start
+fatload usb 0 0x90000000 helloworld_aarch64-phytium-pi.bin
+go 0x90000000
+```
+
+![运行Arceos](./img/0_2_2_3_start_Arceos.png)
