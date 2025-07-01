@@ -42,7 +42,8 @@
 
 - [第七章：多媒体方向](chapter_7.md)
   * [USB摄像头驱动](7_1_usb_camera.md)
-
+* [USB串口驱动](./7_2_usb_serial.md)
+  
 - [第八章：无线通讯方向](chapter_8.md)
   * [WiFi6驱动开发](8_1_wifi6_driver.md)
   * [蓝牙驱动开发](8_2_bluetooth_driver.md)
