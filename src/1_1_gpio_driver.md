@@ -7,10 +7,33 @@
 [一般来说](https://zh.wikipedia.org/zh-hk/GPIO)，GPIO可以用于获取某个的高低电平，作为cpu中断触发源等等。
 下面的两个实验将分别验证gpio的 **irq** 和 **输出** 工作原理。
 
+## memory mapped io
+
+关于这个的实现原理，本章不做过多的解释，否则篇幅将会过长。简单的来说，有了这个技术之后，外设对于cpu来说就是为一块物理内存，cpu可以像操作内存一样来操作设备。在没有这个技术之前，一些古老的设备，像`intel`的16位cpu，必须使用`in/out`一些特殊的端口来访问外设。
+
 ## qemu平台关机实验
 *对于一些简单的设备，qemu能够很好的进行模拟。因此，对于部分没有开发板而想尝试进行驱动开发学习的同学，我们提供了基于qemu的部分实验。*
 
-使用的gpio模块为[*pl061*](https://developer.arm.com/Processors/PL061), 它是arm提供的一个集成化的gpio模块，具有8个引脚，具备常见的gpio功能, qemu也能对这个进行模拟。
+### 实验原理
+- *gpio* 模块介绍
+
+  本次实验使用的gpio模块为[*pl061*](https://developer.arm.com/Processors/PL061), 它是arm提供的一个集成化的gpio模块，具有8个引脚，具备常见的gpio功能, qemu也能对这个设备进行模拟（可以使用 `qemu-system-aarch64 --device help` 来查看qemu支持的设备）。
+
+- *pl061* 相关寄存器介绍（**注意**：不同的外设有不同的寄存器，对于驱动工程师来说，阅读外设datasheet是必不可少的技能。所以建议暂时先跳过本节，阅读后再来验证自己的想法）
+  - *GPIOIS* 和 *GPIOIEV*
+    
+    这两个寄存器的宽度都为为8bit，对应8个引脚。这两个寄存器共同决定了某个引脚的中断触发方法。他们按如下的方式决定中断类型。
+
+    |GPIOIS_i|GPIOEV_i|引脚i中断方式|
+    |----|----|----|
+    |0|0|下降沿触发|
+    |0|1|上升沿触发|
+    |1|0|低电平触发|
+    |1|1|高电平触发|
+
+- *GPIOIE*
+    
+    全称是 *PrimeCell GPIO interrupt enable register*，翻译过来就是中断使能寄存器。宽度为8bit，对应8个引脚。每一个bit用来配置对应引脚的是否使能中断，1是使能，0是不使能。
 
 ### 实验过程
 - 在arceos代码仓库下，使用example为helloworld，先尝试运行得到以下结果。
@@ -67,7 +90,7 @@
         [  0.007086 0 axruntime:201] main task exited: exit_code=0
         [  0.007248 0 axhal::platform::aarch64_common::psci:98] Shutting down...
   </details>
-- 由于目前acreos是unikernel模式，特权级为el1，所以可以直接操作设备地址，将pl061模块的三号引脚配置为irq模式。
+- 由于目前arceos是unikernel模式，特权级为el1，所以可以直接在 *main.c* 中操作设备地址（**需要注意的是，这不是一种正确的做法。但对于初学者，为了不在一开始就去研究arecos的复杂代码框架，可以短暂的把实现代码写在这儿。**），将pl061模块的三号引脚配置为irq模式。
     ```rust
     // examples/helloworld/main.c
     ...
@@ -98,7 +121,7 @@
         #        // clear interrupt
         #        let gpio_ic = base_addr.add(0x41c);
         #        *gpio_ic = (1 << pin);
-        #        // 关机命令，可以是用
+        #        // 关机命令
         #        core::arch::asm!(
         #            "mov w0, #0x18;
         #            hlt #0xf000"
@@ -193,7 +216,11 @@
     Unhandled synchronous exception @ 0xffff0000402010b0: ESR=0x2000000 (EC 0b000000, ISS 0x0)
     [ 50.195002 0 axhal::platform::aarch64_common::psci:98] Shutting down...
   ```
+## 优化代码
+
+- 目前驱动代码位于 `examples/helloworld/main.c` 中，这不是一种正确的做法。参考 `modules/axhal/src/platform/aarch64_common/pl011.rs` 的实现，在同级目录下实现 pl061.rs。 rust 提供了如 `tock_registers` 这样的可以用来定义寄存器的crate，用起来！
+- 关机函数实际上是触发了一个异常而导致的关机，当把上一步完成后，换成 `axhal::misc::terminate` 来优雅的关机！
 
 # 参考资料
-- [pl061_datasheet](https://github.com/elliott10/dev-hw-driver/blob/main/phytiumpi/docs/GPIO-controller-pl061-DDI0190.pdf)
+- [pl061_datasheet](https://github.com/elliott10/dev-hw-driver/blob/main/docs/GPIO-controller-pl061-DDI0190.pdf)
 - [导出qemu设备树](https://blog.51cto.com/u_15072780/3818667)
