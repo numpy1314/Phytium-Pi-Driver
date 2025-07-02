@@ -226,7 +226,7 @@
 
   基本思想是将GPIO配置为作为输出模式，对应的，这个GPIO可以输出为高电平或者低电平。我们都学过初中物理，知道当一个led灯两侧有足够的电压和电流的时候，它就会亮。不过一般的GPIO线输出电流能力都不强，不足以驱动一个led灯。所以一般会用以下两种方式来实现：
   - led正极接电源，负极接gpio。gpio输出为低时，led点亮。
-  - led接 *[mos](https://baike.baidu.com/item/%E9%87%91%E5%B1%9E%E6%B0%A7%E5%8C%96%E7%89%A9%E5%8D%8A%E5%AF%BC%E4%BD%93%E5%9C%BA%E6%95%88%E5%BA%94%E7%AE%A1/8129105)* 管的*gate*。一般来说，GPIO为高电压时，会使得*mos*管闭合，led电量；反之则熄灭。
+  - led接 *[mos](https://baike.baidu.com/item/%E9%87%91%E5%B1%9E%E6%B0%A7%E5%8C%96%E7%89%A9%E5%8D%8A%E5%AF%BC%E4%BD%93%E5%9C%BA%E6%95%88%E5%BA%94%E7%AE%A1/8129105)* 管的*gate*。一般来说，GPIO为高电压时，会使得*mos*管闭合，led点亮；反之则熄灭。
   
   参照飞腾派的硬件原理图，板子上有一个灯可以被我们控制，也就是*led20*，控制方法为第二种方法，控制GPIO线为GPIO1_8。
   ![cpu_run](images/cpu_run.png)
@@ -237,7 +237,7 @@
   我们最终要实现led灯的"心跳"效果，即 亮1秒，暗1秒，如此往复循环。
 
 ### 寄存器定义
-  *notice： 飞腾派上的GPIO模块操作方式都是统一的，唯一的区别是有的gpio需要先进行引脚复用的配置。具体操作可以参照参考飞腾派裸机开发手册进行配置。本次使用的引脚不需要配置，因为笔者没有找到这个GPIO的寄存器。按照官方文档描述，没有找到就是不需要配置，所以可以认为这个引脚只有gpio功能。*
+  *notice： 飞腾派上的GPIO模块操作方式都是统一的，唯一的区别是有的gpio需要先进行引脚复用的配置。具体操作可以参照参考飞腾派裸机开发手册进行配置。本次使用的引脚不需要配置，因为笔者没有找到这个GPIO的引脚复用配置寄存器。按照官方文档描述，没有找到就是不需要配置，所以可以认为这个引脚只有gpio功能。*
   
   对于输入输出，我们只关心以下三个寄存器，他们的定义可以在飞腾派软件开发手册很轻松的找到（而且是中文～），这里就不做复制粘贴的工作了。
   - GPIO_SWPORT_DR (0x00)
@@ -486,5 +486,5 @@
 # 参考资料
 - [pl061_datasheet](https://github.com/elliott10/dev-hw-driver/blob/main/docs/GPIO-controller-pl061-DDI0190.pdf)
 - [导出qemu设备树](https://blog.51cto.com/u_15072780/3818667)
-- [飞腾派硬件原理图]()
-- [飞腾派软件开发手册]
+- [飞腾派硬件原理图](https://github.com/elliott10/dev-hw-driver/blob/main/phytiumpi/docs/飞腾派v3原理cek8903_piq_v3_sch20240506.pdf)
+- [飞腾派软件开发手册](https://github.com/elliott10/dev-hw-driver/blob/main/phytiumpi/docs/飞腾派软件编程手册V1.0.pdf)
