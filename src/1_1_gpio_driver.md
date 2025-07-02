@@ -221,6 +221,270 @@
 - 目前驱动代码位于 `examples/helloworld/main.c` 中，这不是一种正确的做法。参考 `modules/axhal/src/platform/aarch64_common/pl011.rs` 的实现，在同级目录下实现 pl061.rs。 rust 提供了如 `tock_registers` 这样的可以用来定义寄存器的crate，用起来！
 - 关机函数实际上是触发了一个异常而导致的关机，当把上一步完成后，换成 `axhal::misc::terminate` 来优雅的关机！
 
+## 飞腾派点灯实验
+### 实验原理
+
+  基本思想是将GPIO配置为作为输出模式，对应的，这个GPIO可以输出为高电平或者低电平。我们都学过初中物理，知道当一个led灯两侧有足够的电压和电流的时候，它就会亮。不过一般的GPIO线输出电流能力都不强，不足以驱动一个led灯。所以一般会用以下两种方式来实现：
+  - led正极接电源，负极接gpio。gpio输出为低时，led点亮。
+  - led接 *[mos](https://baike.baidu.com/item/%E9%87%91%E5%B1%9E%E6%B0%A7%E5%8C%96%E7%89%A9%E5%8D%8A%E5%AF%BC%E4%BD%93%E5%9C%BA%E6%95%88%E5%BA%94%E7%AE%A1/8129105)* 管的*gate*。一般来说，GPIO为高电压时，会使得*mos*管闭合，led电量；反之则熄灭。
+  
+  参照飞腾派的硬件原理图，板子上有一个灯可以被我们控制，也就是*led20*，控制方法为第二种方法，控制GPIO线为GPIO1_8。
+  ![cpu_run](images/cpu_run.png)
+  ![gpio1_8](images/gpio1_8.png)
+  
+  *当然，如果你愿意，飞腾派开发板提供了很多GPIO的拓展线。你可以自己实现一套电路来点亮外接的led灯。*
+
+  我们最终要实现led灯的"心跳"效果，即 亮1秒，暗1秒，如此往复循环。
+
+### 寄存器定义
+  *notice： 飞腾派上的GPIO模块操作方式都是统一的，唯一的区别是有的gpio需要先进行引脚复用的配置。具体操作可以参照参考飞腾派裸机开发手册进行配置。本次使用的引脚不需要配置，因为笔者没有找到这个GPIO的寄存器。按照官方文档描述，没有找到就是不需要配置，所以可以认为这个引脚只有gpio功能。*
+  
+  对于输入输出，我们只关心以下三个寄存器，他们的定义可以在飞腾派软件开发手册很轻松的找到（而且是中文～），这里就不做复制粘贴的工作了。
+  - GPIO_SWPORT_DR (0x00)
+  - GPIO_SWPORT_DDR (0x04)
+  - GPIO_EXT_PORT (0x08)
+
+### 实验过程
+- 编写驱动代码，实现 *set_dir* 和 *set_data* 操作，示例代码如下：
+  ```rust
+  use bitflags::bitflags;
+  use safe_mmio::fields::ReadWrite;
+  use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
+
+  #[derive(Clone, Eq, FromBytes, Immutable, IntoBytes, KnownLayout, PartialEq)]
+  #[repr(C, align(4))]
+  pub struct PhitiumGpio {
+    data: ReadWrite<GpioPins>,
+    resv: ReadWrite<u16>,
+    dir: ReadWrite<GpioPins>,
+    resv2: ReadWrite<u16>,
+  }
+
+  #[repr(transparent)]
+  #[derive(Copy, Clone, Debug, Eq, FromBytes, Immutable, IntoBytes, KnownLayout, PartialEq)]
+  pub struct GpioPins(u16);
+
+  bitflags! {
+    impl GpioPins: u16 {
+        const p0 = 1<<0;
+        const p1 = 1<<1;
+        const p2 = 1<<2;
+        const p3 = 1<<3;
+        const p4 = 1<<4;
+        const p5 = 1<<5;
+        const p6 = 1<<6;
+        const p7 = 1<<7;
+        const p8 = 1<<8;
+        const p9 = 1<<9;
+        const p10 = 1<<10;
+        const p11 = 1<<11;
+        const p12 = 1<<12;
+        const p13 = 1<<13;
+        const p14 = 1<<14;
+        const p15 = 1<<15;
+    }
+  }
+
+  impl PhitiumGpio {
+    pub fn new(base: usize) -> &'static mut Self {
+        let b = base as *mut PhitiumGpio;
+        unsafe { &mut (*b) }
+    }
+    pub fn set_pin_dir(&mut self, pin: GpioPins, dir: bool) {
+        let mut status = self.dir.0.bits();
+        debug!("dir data = {status}");
+        let pb = pin.bits();
+        if dir == true {
+            status |= pb;
+        } else {
+            status &= !pb;
+        }
+        debug!("dir data = {status}");
+        self.dir.0 = (GpioPins::from_bits_truncate(status));
+    }
+    pub fn set_pin_data(&mut self, pin: GpioPins, data: bool) {
+        let mut status = self.dir.0.bits();
+        debug!(" data = {status}");
+        let pb = pin.bits();
+        if data == true {
+            status |= pb;
+        } else {
+            status &= !pb;
+        }
+        debug!(" data = {status}");
+        self.data.0 = (GpioPins::from_bits_truncate(status));
+    }
+  }
+  pub use crate::mem::phys_to_virt;
+  pub use memory_addr::PhysAddr;
+
+  pub const BASE1: PhysAddr = pa!(0x28035000);
+  ```
+- 由于我们目前暂时没有文件系统，无法通过读写文件的方式来控制GPIO。这里直接在main.rs中实例一个GPIO控制器进行相关初始化。
+  ```rust
+  // examples/helloworld/src/main.rs
+
+  #![cfg_attr(feature = "axstd", no_std)]
+  #![cfg_attr(feature = "axstd", no_main)]
+
+  # use core::time;
+
+  #[cfg(feature = "axstd")]
+  use axstd::println;
+
+  # use axstd::thread::sleep;
+
+  #[cfg_attr(feature = "axstd", unsafe(no_mangle))]
+  fn main() {
+      println!("Hello, world!");
+      let gpio0 = axhal::platform::gpio::PhitiumGpio::new(
+          axhal::platform::gpio::phys_to_virt(axhal::platform::gpio::BASE1).into(),
+      );
+      let p = axhal::platform::gpio::GpioPins::p8;
+      gpio0.set_pin_dir(p, true);
+      # let mut data = false;
+      # loop {
+      #    sleep(time::Duration::from_secs(1));
+      #    gpio0.set_pin_data(p, data);
+      #    println!("current data: {data}");
+      #    data = !data;
+      # }
+  }
+
+  ```
+- 创建一个大loop，在这个loop中，我们不停的将pin 8的值进行反转，反转一次，sleep 1s，这样就实现了1s灭，1s亮的效果。
+```rust
+  // examples/helloworld/src/main.rs
+
+  # #![cfg_attr(feature = "axstd", no_std)]
+  # #![cfg_attr(feature = "axstd", no_main)]
+
+  use core::time;
+
+  #[cfg(feature = "axstd")]
+  use axstd::println;
+
+  use axstd::thread::sleep;
+
+  # #[cfg_attr(feature = "axstd", unsafe(no_mangle))]
+  # fn main() {
+      # println!("Hello, world!");
+      # let gpio0 = axhal::platform::gpio::PhitiumGpio::new(
+      #    axhal::platform::gpio::phys_to_virt(axhal::platform::gpio::BASE1).into(),
+      # );
+      # let p = axhal::platform::gpio::GpioPins::p8;
+      # gpio0.set_pin_dir(p, true);
+      # et mut data = false;
+      loop {
+          sleep(time::Duration::from_secs(1));
+          gpio0.set_pin_data(p, data);
+          println!("current data: {data}");
+          data = !data;
+      }
+#  } 
+```
+
+- 通过`make A=examples/helloworld ARCH=aarch64 PLATFORM=aarch64-phytium-pi  FEATURES=irq LOG=debug`进行编译，并烧入飞腾派运行。下面是运行日志以及实拍。
+<details>
+  <summary>运行结果</summary>
+
+    Starting kernel ...
+
+
+          d8888                            .d88888b.   .d8888b.
+          d88888                           d88P" "Y88b d88P  Y88b
+        d88P888                           888     888 Y88b.
+        d88P 888 888d888  .d8888b  .d88b.  888     888  "Y888b.
+      d88P  888 888P"   d88P"    d8P  Y8b 888     888     "Y88b.
+      d88P   888 888     888      88888888 888     888       "888
+    d8888888888 888     Y88b.    Y8b.     Y88b. .d88P Y88b  d88P
+    d88P     888 888      "Y8888P  "Y8888   "Y88888P"   "Y8888P"
+
+    arch = aarch64
+    platform = aarch64-phytium-pi
+    target = aarch64-unknown-none-softfloat
+    build_mode = release
+    log_level = trace
+    smp = 1
+
+    [ 13.461312 0 axruntime:130] Logging is enabled.
+    [ 13.467040 0 axruntime:131] Primary CPU 0 started, dtb = 0xf9c29000.
+    [ 13.474591 0 axruntime:133] Found physcial memory regions:
+    [ 13.481276 0 axruntime:135]   [PA:0x90000000, PA:0x90007000) .text (READ | EXECUTE | RESERVED)
+    [ 13.491083 0 axruntime:135]   [PA:0x90007000, PA:0x9000a000) .rodata (READ | RESERVED)
+    [ 13.500197 0 axruntime:135]   [PA:0x9000a000, PA:0x9000e000) .data .tdata .tbss .percpu (READ | WRITE | RESERVED)
+    [ 13.511655 0 axruntime:135]   [PA:0x9000e000, PA:0x9004e000) boot stack (READ | WRITE | RESERVED)
+    [ 13.521724 0 axruntime:135]   [PA:0x9004e000, PA:0x90051000) .bss (READ | WRITE | RESERVED)
+    [ 13.531272 0 axruntime:135]   [PA:0x90051000, PA:0x100000000) free memory (READ | WRITE | FREE)
+    [ 13.541167 0 axruntime:135]   [PA:0x2800c000, PA:0x2800d000) mmio (READ | WRITE | DEVICE | RESERVED)
+    [ 13.551496 0 axruntime:135]   [PA:0x2800d000, PA:0x2800e000) mmio (READ | WRITE | DEVICE | RESERVED)
+    [ 13.561825 0 axruntime:135]   [PA:0x2800e000, PA:0x2800f000) mmio (READ | WRITE | DEVICE | RESERVED)
+    [ 13.572155 0 axruntime:135]   [PA:0x2800f000, PA:0x28010000) mmio (READ | WRITE | DEVICE | RESERVED)
+    [ 13.582484 0 axruntime:135]   [PA:0x30000000, PA:0x38000000) mmio (READ | WRITE | DEVICE | RESERVED)
+    [ 13.592813 0 axruntime:135]   [PA:0x40000000, PA:0x50000000) mmio (READ | WRITE | DEVICE | RESERVED)
+    [ 13.603142 0 axruntime:135]   [PA:0x58000000, PA:0x80000000) mmio (READ | WRITE | DEVICE | RESERVED)
+    [ 13.613471 0 axruntime:135]   [PA:0x28014000, PA:0x28016000) mmio (READ | WRITE | DEVICE | RESERVED)
+    [ 13.623800 0 axruntime:135]   [PA:0x28016000, PA:0x28018000) mmio (READ | WRITE | DEVICE | RESERVED)
+    [ 13.634130 0 axruntime:135]   [PA:0x28018000, PA:0x2801a000) mmio (READ | WRITE | DEVICE | RESERVED)
+    [ 13.644459 0 axruntime:135]   [PA:0x2801a000, PA:0x2801c000) mmio (READ | WRITE | DEVICE | RESERVED)
+    [ 13.654788 0 axruntime:135]   [PA:0x2801c000, PA:0x2801e000) mmio (READ | WRITE | DEVICE | RESERVED)
+    [ 13.665117 0 axruntime:135]   [PA:0x28034000, PA:0x28035000) mmio (READ | WRITE | DEVICE | RESERVED)
+    [ 13.675446 0 axruntime:135]   [PA:0x28035000, PA:0x28036000) mmio (READ | WRITE | DEVICE | RESERVED)
+    [ 13.685776 0 axruntime:135]   [PA:0x28036000, PA:0x28037000) mmio (READ | WRITE | DEVICE | RESERVED)
+    [ 13.696105 0 axruntime:135]   [PA:0x28037000, PA:0x28038000) mmio (READ | WRITE | DEVICE | RESERVED)
+    [ 13.706434 0 axruntime:135]   [PA:0x28038000, PA:0x28039000) mmio (READ | WRITE | DEVICE | RESERVED)
+    [ 13.716763 0 axruntime:135]   [PA:0x28039000, PA:0x2803a000) mmio (READ | WRITE | DEVICE | RESERVED)
+    [ 13.727093 0 axruntime:150] Initialize platform devices...
+    [ 13.733776 0 axhal::platform::aarch64_common::gic:51] Initialize GICv2...
+    [ 13.741897 0 axhal::platform::aarch64_common::gic:27] GICD set enable: 30 true
+    [ 13.750182 0 axhal::platform::aarch64_common::gic:27] GICD set enable: 116 true
+    [ 13.758688 0 axruntime:176] Initialize interrupt handlers...
+    [ 13.765545 0 axhal::platform::aarch64_common::gic:36] register handler irq 30
+    [ 13.773878 0 axhal::platform::aarch64_common::gic:27] GICD set enable: 30 true
+    [ 13.782298 0 axruntime:188] Primary CPU 0 init OK.
+    Hello, world!
+    [ 13.789589 0 axhal::platform::aarch64_phytium_pi::gpio:46] dir data = 0
+    [ 13.797401 0 axhal::platform::aarch64_phytium_pi::gpio:53] dir data = 256
+    [ 14.805386 0 axhal::platform::aarch64_phytium_pi::gpio:58]  data = 256
+    [ 14.810239 0 axhal::platform::aarch64_phytium_pi::gpio:65]  data = 0
+    current data: false
+    [ 15.819614 0 axhal::platform::aarch64_phytium_pi::gpio:58]  data = 256
+    [ 15.824467 0 axhal::platform::aarch64_phytium_pi::gpio:65]  data = 256
+    current data: true
+    [ 16.833928 0 axhal::platform::aarch64_phytium_pi::gpio:58]  data = 256
+    [ 16.838781 0 axhal::platform::aarch64_phytium_pi::gpio:65]  data = 0
+    current data: false
+    [ 17.848156 0 axhal::platform::aarch64_phytium_pi::gpio:58]  data = 256
+    [ 17.853009 0 axhal::platform::aarch64_phytium_pi::gpio:65]  data = 256
+    current data: true
+    [ 18.862470 0 axhal::platform::aarch64_phytium_pi::gpio:58]  data = 256
+    [ 18.867323 0 axhal::platform::aarch64_phytium_pi::gpio:65]  data = 0
+    current data: false
+    [ 19.876698 0 axhal::platform::aarch64_phytium_pi::gpio:58]  data = 256
+    [ 19.881551 0 axhal::platform::aarch64_phytium_pi::gpio:65]  data = 256
+    current data: true
+    [ 20.891012 0 axhal::platform::aarch64_phytium_pi::gpio:58]  data = 256
+    [ 20.895865 0 axhal::platform::aarch64_phytium_pi::gpio:65]  data = 0
+    current data: false
+    [ 21.905240 0 axhal::platform::aarch64_phytium_pi::gpio:58]  data = 256
+    [ 21.910093 0 axhal::platform::aarch64_phytium_pi::gpio:65]  data = 256
+    current data: true
+    [ 22.919554 0 axhal::platform::aarch64_phytium_pi::gpio:58]  data = 256
+    [ 22.924407 0 axhal::platform::aarch64_phytium_pi::gpio:65]  data = 0
+    current data: false
+    [ 23.933782 0 axhal::platform::aarch64_phytium_pi::gpio:58]  data = 256
+    [ 23.938635 0 axhal::platform::aarch64_phytium_pi::gpio:65]  data = 256
+    current data: true
+    [ 24.948097 0 axhal::platform::aarch64_phytium_pi::gpio:58]  data = 256
+    [ 24.952950 0 axhal::platform::aarch64_phytium_pi::gpio:65]  data = 0
+    current data: false
+</details>
+
+  ![led亮](images/led_on.jpg)
+
+  ![led_off](images/led_off.jpg)
 # 参考资料
 - [pl061_datasheet](https://github.com/elliott10/dev-hw-driver/blob/main/docs/GPIO-controller-pl061-DDI0190.pdf)
 - [导出qemu设备树](https://blog.51cto.com/u_15072780/3818667)
+- [飞腾派硬件原理图]()
+- [飞腾派软件开发手册]
