@@ -188,3 +188,22 @@ pub fn ping_watchdog() {
     }
 }
 ```
+接下来，我们进行测试，我们可以选择在内核中启用看门狗，并设置超时时间为6秒，
+```rust
+super::aarch64_common::sbsa_wdt::set_watchdog_timeout(6);
+super::aarch64_common::sbsa_wdt::start_watchdog();
+```
+同时编写个测试应用
+```rust
+fn main() {
+    println!("Hello, world!");
+    let mut count = 1usize;
+    loop {
+        println!("count {count}");
+        count += 1;
+        axstd::thread::sleep(core::time::Duration::from_secs(1));
+    }
+}
+```
+可观察到如下现象，应用程序计时到第6秒时，设备重启了．
+![](img/2_3_watdog_reboot.png)
