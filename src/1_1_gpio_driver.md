@@ -216,10 +216,6 @@
     Unhandled synchronous exception @ 0xffff0000402010b0: ESR=0x2000000 (EC 0b000000, ISS 0x0)
     [ 50.195002 0 axhal::platform::aarch64_common::psci:98] Shutting down...
   ```
-## 优化代码
-
-- 目前驱动代码位于 `examples/helloworld/main.c` 中，这不是一种正确的做法。参考 `modules/axhal/src/platform/aarch64_common/pl011.rs` 的实现，在同级目录下实现 pl061.rs。 rust 提供了如 `tock_registers` 这样的可以用来定义寄存器的crate，用起来！
-- 关机函数实际上是触发了一个异常而导致的关机，当把上一步完成后，换成 `axhal::misc::terminate` 来优雅的关机！
 
 ## 飞腾派点灯实验
 ### 实验原理
@@ -483,8 +479,15 @@
   ![led亮](images/led_on.jpg)
 
   ![led_off](images/led_off.jpg)
-# 参考资料
+
+## 优化代码
+
+- 目前驱动代码位于 `examples/helloworld/main.c` 中，这不是一种正确的做法。参考 `modules/axhal/src/platform/aarch64_common/pl011.rs` 的实现，在同级目录下实现 pl061.rs。 rust 提供了如 `tock_registers` 这样的可以用来定义寄存器的crate，用起来！
+- 关机函数实际上是触发了一个异常而导致的关机，当把上一步完成后，换成 `axhal::misc::terminate` 来优雅的关机！
+- 实验2的完整代码在[这儿](https://github.com/arceos-org/arceos/commit/2e7837a786d13b0a77804d15a10f614ef715150d)。
+
+## 参考资料
 - [pl061_datasheet](https://github.com/elliott10/dev-hw-driver/blob/main/docs/GPIO-controller-pl061-DDI0190.pdf)
 - [导出qemu设备树](https://blog.51cto.com/u_15072780/3818667)
-- [飞腾派硬件原理图](https://github.com/elliott10/dev-hw-driver/blob/main/phytiumpi/docs/飞腾派v3原理cek8903_piq_v3_sch20240506.pdf)
+- [飞腾派硬件原理图](https://github.com/elliott10/dev-hw-driver/blob/main/phytiumpi/docs/%E9%A3%9E%E8%85%BE%E6%B4%BEv3%E5%8E%9F%E7%90%86%E5%9B%BE%20cek8903_piq_v3_sch20240506.pdf)
 - [飞腾派软件开发手册](https://github.com/elliott10/dev-hw-driver/blob/main/phytiumpi/docs/飞腾派软件编程手册V1.0.pdf)
