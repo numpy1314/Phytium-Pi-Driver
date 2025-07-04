@@ -225,8 +225,8 @@
   - led接 *[mos](https://baike.baidu.com/item/%E9%87%91%E5%B1%9E%E6%B0%A7%E5%8C%96%E7%89%A9%E5%8D%8A%E5%AF%BC%E4%BD%93%E5%9C%BA%E6%95%88%E5%BA%94%E7%AE%A1/8129105)* 管的*gate*。一般来说，GPIO为高电压时，会使得*mos*管闭合，led点亮；反之则熄灭。
   
   参照飞腾派的硬件原理图，板子上有一个灯可以被我们控制，也就是*led20*，控制方法为第二种方法，控制GPIO线为GPIO1_8。
-  ![cpu_run](images/cpu_run.png)
-  ![gpio1_8](images/gpio1_8.png)
+  ![cpu_run](img/1_1_cpu_run.png)
+  ![gpio1_8](img/1_1_gpio1_8.png)
   
   *当然，如果你愿意，飞腾派开发板提供了很多GPIO的拓展线。你可以自己实现一套电路来点亮外接的led灯。*
 
@@ -476,9 +476,9 @@
     current data: false
 </details>
 
-  ![led亮](images/led_on.jpg)
+  ![led亮](img/1_1_led_on.jpg)
 
-  ![led_off](images/led_off.jpg)
+  ![led_off](img/1_1_led_off.jpg)
 
 ## 优化代码
 
