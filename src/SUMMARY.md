@@ -3,19 +3,19 @@
 - [前言](preface.md)
 
 - [第零章：环境配置与预备知识](chapter_0.md)
-  * [硬件平台介绍](0_1_hardware_intro.md)
-  * [开发环境准备](0_2_dev_env.md)
+  * [* 硬件平台介绍](0_1_hardware_intro.md)
+  * [* 开发环境准备](0_2_dev_env.md)
   * [前置知识引导](0_3_prerequisites.md)
 
 - [第一章：硬件控制类驱动](chapter_1.md)
-  * [GPIO驱动开发](1_1_gpio_driver.md)
+  * [* GPIO驱动开发](1_1_gpio_driver.md)
   * [PWM驱动开发](1_2_pwm_driver.md)
   * [复位与引脚复用驱动](1_3_reset_pinmux.md)
 
 - [第二章：时钟管理类驱动](chapter_2.md)
   * [NOC时钟驱动](2_1_noc_clock.md)
   * [时钟源驱动](2_2_clock_source.md)
-  * [看门狗驱动](2_3_watchdog.md)
+  * [* 看门狗驱动](2_3_watchdog.md)
 
 - [第三章：外设协议类驱动](chapter_3.md)
   * [UART串口驱动](3_1_uart_driver.md)
@@ -42,7 +42,7 @@
 
 - [第七章：多媒体方向](chapter_7.md)
   * [USB摄像头驱动](7_1_usb_camera.md)
-* [USB串口驱动](./7_2_usb_serial.md)
+  * [* USB串口驱动](./7_2_usb_serial.md)
   
 - [第八章：无线通讯方向](chapter_8.md)
   * [WiFi6驱动开发](8_1_wifi6_driver.md)
