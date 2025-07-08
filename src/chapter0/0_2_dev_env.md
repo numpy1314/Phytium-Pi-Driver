@@ -8,9 +8,11 @@
 
 ### vscode使用
 由于是使用的wsl（inux子系统）作为基础编译环境，默认提供的是命令行搭配vim的方式来编辑文件。这可能并不是大部分人喜欢的开发环境，所以推荐使用vscode搭配remote-ssh插件来进行开发，并且该插件对于wsl是有很好的兼容性的，安装插件后直接选择连接wsl即可使用。
-![安装remote-ssh插件](../resource/img/0_2_1_1_install_remote_ssh.png)
-![连接到wsl](../resource/img/0_2_1_2_connect_wsl.png)
-![打开远程文件夹](../resource/img/0_2_1_3_open_remote_folder.png)
+<p align="center">
+  <img src="../resource/img/0_2_1_1_install_remote_ssh.png" alt="安装remote-ssh插件" width="600"/>
+  <img src="../resource/img/0_2_1_2_connect_wsl.png" alt="连接到wsl" width="600"/>
+  <img src="../resource/img/0_2_1_3_open_remote_folder.png" alt="打开远程文件夹" width="600"/>
+</p>
 
 ### qemu 补充
 在第一节的指导手册上使用的qemu版本是7.0.2，而很多模拟的外设是在后续版本才加到qemu中的。所以推荐从官网安装最新版或指定版本[qemu官网](https://www.qemu.org/download)
@@ -34,11 +36,12 @@ make install
 
 下载解压后使用烧录工具将系统镜像烧录到TF卡，之后将TF插到飞腾派的卡槽中，最后连接电源线上电。
 烧录工具推荐使用 balenaEtcher  
-下载地址 https://etcher.balena.io/
+[下载地址](https://etcher.balena.io/)
 也可以使用win32 disk image 
-下载地址 https://sourceforge.net/projects/win32diskimager/
+[下载地址](https://sourceforge.net/projects/win32diskimager/)
 
-> **注释：** 常用的手机以及派上的小卡正式名叫做TF或者说microSD 大的是SD卡当然统称为sd卡也是可以的  具体区别可查看这个链接https://www.sd-nand.com/news/technology/312.html
+> **注释：** 常用的手机以及派上的小卡正式名叫做TF或者说microSD 大的是SD卡当然统称为sd卡也是可以的  具体区别可查看
+[TF卡与SD卡](https://www.sd-nand.com/news/technology/312.html)
 
 注意引导方式选择从sd卡启动！！！
 ![启动模式](../resource/img/0_2_2_1_start_mode_table.png)
