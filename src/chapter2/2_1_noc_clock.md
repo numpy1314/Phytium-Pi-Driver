@@ -7,11 +7,11 @@ generic timer arm公司提出的一种硬件上的设计框架。在早期单核
 
 非虚拟化：
 
-![system_counter](img/2_1_system_counter.png)
+![system_counter](../resource/img/2_1_system_counter.png)
 
 虚拟化：
 
-![system_counter_virtual](img/2_1_system_counter_virtual.png)
+![system_counter_virtual](../resource/img/2_1_system_counter_virtual.png)
 
 每一个核有单独的timer，以及一个全局的system counter，它们通过system time bus相连。此外，对于虚拟化场景，还额外增加了CNTVOFF这个寄存器，主要作用是对于让虚拟机感受不到非调度时间的流逝。对于这个架构保证了对于所有的核来说，timer的clock都是一致的。产生的中断位于gic的ppi区，产生的中断会分发到对应的核上。
 

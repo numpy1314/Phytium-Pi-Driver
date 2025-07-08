@@ -229,4 +229,4 @@ fn main() {
 }
 ```
 可观察到如下现象，应用程序计时到第6秒时，设备重启了．
-![](img/2_3_watdog_reboot.png)
+![](../resource/img/2_3_watdog_reboot.png)

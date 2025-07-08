@@ -8,9 +8,9 @@
 
 ### vscode使用
 由于是使用的wsl（inux子系统）作为基础编译环境，默认提供的是命令行搭配vim的方式来编辑文件。这可能并不是大部分人喜欢的开发环境，所以推荐使用vscode搭配remote-ssh插件来进行开发，并且该插件对于wsl是有很好的兼容性的，安装插件后直接选择连接wsl即可使用。
-![安装remote-ssh插件](./img/0_2_1_1_install_remote_ssh.png)
-![连接到wsl](./img/0_2_1_2_connect_wsl.png)
-![打开远程文件夹](./img/0_2_1_3_open_remote_folder.png)
+![安装remote-ssh插件](../resource/img/0_2_1_1_install_remote_ssh.png)
+![连接到wsl](../resource/img/0_2_1_2_connect_wsl.png)
+![打开远程文件夹](../resource/img/0_2_1_3_open_remote_folder.png)
 
 ### qemu 补充
 在第一节的指导手册上使用的qemu版本是7.0.2，而很多模拟的外设是在后续版本才加到qemu中的。所以推荐从官网安装最新版或指定版本[qemu官网](https://www.qemu.org/download)
@@ -41,12 +41,12 @@ make install
 > **注释：** 常用的手机以及派上的小卡正式名叫做TF或者说microSD 大的是SD卡当然统称为sd卡也是可以的  具体区别可查看这个链接https://www.sd-nand.com/news/technology/312.html
 
 注意引导方式选择从sd卡启动！！！
-![启动模式](./img/0_2_2_1_start_mode_table.png)
+![启动模式](../resource/img/0_2_2_1_start_mode_table.png)
 
 > **注释：**  如果使用的是带emmc的版本可以直接从emmc启动，是当前版本的麒麟os启动会禁用风扇请注意，过热可能会损坏飞腾派。
 
 启动后连接串口，可以看到如下打印即说明系统成功启动，
-![phyiumpi](./img/0_2_2_4_start_phyiumpios.png)
+![phyiumpi](../resource/img/0_2_2_4_start_phyiumpios.png)
 账号:root
 密码:root
 
@@ -70,7 +70,7 @@ make A=examples/helloworld ARCH=aarch64 PLATFORM=aarch64-phytium-pi  FEARURES="i
 
 之后会在example/helloword 文件夹内生成对应的可执行文件helloworld_aarch64-phytium-pi.bin
 将该文件拷贝到u盘中后将u盘插入飞腾派，之后重启飞腾派并在重启过程中在串口工具中输入enter以进入cmd模式，成功进入后串口打印如下图所示。
-![命令行模式](./img/0_2_2_2_enter_cmd_mode.png)
+![命令行模式](../resource/img/0_2_2_2_enter_cmd_mode.png)
 
 执行如下指令即可将本地编译的Arceos部署到飞腾派上运行
 
@@ -80,4 +80,4 @@ fatload usb 0 0x90000000 helloworld_aarch64-phytium-pi.bin
 go 0x90000000
 ```
 
-![运行Arceos](./img/0_2_2_3_start_Arceos.png)
+![运行Arceos](../resource/img/0_2_2_3_start_Arceos.png)
