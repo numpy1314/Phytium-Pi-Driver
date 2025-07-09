@@ -19,38 +19,43 @@
 
 - [第三章：外设协议类驱动](chapter3/chapter_3.md)
   * [* UART串口驱动](chapter3/3_1_uart_driver.md)
-  * [I2C驱动开发](chapter3/3_2_i2c_driver.md)
-  * [SPI驱动开发](chapter3/3_3_spi_driver.md)
-
-- [第四章：高速传输类驱动](chapter4/chapter_4.md)
-  * [DMA驱动开发](chapter4/4_1_dma_driver.md)
-  * [PCI控制器驱动](chapter4/4_2_pci_controller.md)
-  * [PCIe互联驱动](chapter4/4_3_pcie_interconnect.md)
-
-- [第五章：网络通信类驱动](chapter5/chapter_5.md)
-  * [单元测试与调试](chapter5/5_1_unit_testing.md)
-  * [PCIe网卡驱动基础](chapter5/5_2_pcie_nic_basic.md)
-  * [IGB网卡驱动实现](chapter5/5_3_igb_driver.md)
-  * [GMAC以太网基础](chapter5/5_4_gmac_ethernet.md)
-  * [YT8521驱动实现](chapter5/5_5_yt8521_driver.md)
-  * [net_device实现](chapter5/5_6_net_device.md)
-
-- [第六章：存储驱动实现](chapter6/chapter_6.md)
-  * [Micro SD驱动](chapter6/6_1_sd_driver.md)
-  * [eMMC驱动](chapter6/6_2_emmc_driver.md)
-  * [Flash驱动](chapter6/6_3_flash_driver.md)
-
-- [第七章：多媒体方向](chapter7/chapter_7.md)
-  * [USB串口驱动](chapter7/7_1_usb_serial.md)
-  * [USB摄像头驱动](chapter7/7_2_usb_camera.md)
+  * [* I2C驱动开发](chapter3/3_2_i2c_driver.md)
+  * [* SPI驱动开发](chapter3/3_3_spi_driver.md)
   
-- [第八章：无线通讯方向](chapter8/chapter_8.md)
-  * [WiFi6驱动开发](chapter8/8_1_wifi6_driver.md)
-  * [蓝牙驱动开发](chapter8/8_2_bluetooth_driver.md)
+- [* 第四章：驱动设计模式](chapter4/chapter_4.md)
+  * [* 测试驱动开发](chapter4/4_1_TDD.md)
+  * [* 设计模式](chapter4/4_2_design_patterns.md)
+  * [* 注意事项](chapter4/4_3_precautions.md)
 
-- [第九章：实时工业总线方向](chapter9/chapter_9.md)
-  * [CANFD驱动](chapter9/9_1_canfd_driver.md)
-  * [EtherCAT驱动](chapter9/9_2_ethercat_driver.md)
+- [第五章：高速传输类驱动](chapter5/chapter_5.md)
+  * [DMA驱动开发](chapter5/5_1_dma_driver.md)
+  * [PCI控制器驱动](chapter5/5_2_pci_controller.md)
+  * [PCIe互联驱动](chapter5/5_3_pcie_interconnect.md)
+
+- [第六章：网络通信类驱动](chapter6/chapter_6.md)
+  * [单元测试与调试](chapter6/6_1_unit_testing.md)
+  * [PCIe网卡驱动基础](chapter6/6_2_pcie_nic_basic.md)
+  * [IGB网卡驱动实现](chapter6/6_3_igb_driver.md)
+  * [GMAC以太网基础](chapter6/6_4_gmac_ethernet.md)
+  * [YT8521驱动实现](chapter6/6_5_yt8521_driver.md)
+  * [net_device实现](chapter6/6_6_net_device.md)
+
+- [第七章：存储驱动实现](chapter7/chapter_7.md)
+  * [Micro SD驱动](chapter7/7_1_sd_driver.md)
+  * [eMMC驱动](chapter7/7_2_emmc_driver.md)
+  * [Flash驱动](chapter7/7_3_flash_driver.md)
+
+- [第八章：多媒体方向](chapter8/chapter_8.md)
+  * [* USB串口驱动](chapter8/8_1_usb_serial.md)
+  * [USB摄像头驱动](chapter8/8_2_usb_camera.md)
+  
+- [第九章：无线通讯方向](chapter9/chapter_9.md)
+  * [WiFi6驱动开发](chapter9/9_1_wifi6_driver.md)
+  * [蓝牙驱动开发](chapter9/9_2_bluetooth_driver.md)
+
+- [第十章：实时工业总线方向](chapter10/chapter_10.md)
+  * [CANFD驱动](chapter10/10_1_canfd_driver.md)
+  * [EtherCAT驱动](chapter10/10_2_ethercat_driver.md)
 
 - [附录：训练营资源](appendix/appendix.md)
   * [训练营课表](appendix/A_1_schedule.md)
