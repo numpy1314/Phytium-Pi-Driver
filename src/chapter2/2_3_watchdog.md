@@ -1,7 +1,12 @@
 # 2.3 看门狗驱动
+
+## 看门狗工作原理
+
 看门狗是为了保障系统在因为某些错误导致挂起时，用来恢复系统所设计的一个硬件．其内部有个定时器，如果在定时器超时时间内，没有周期性地去"喂"（通常以设置某个寄存器，或者拉升/低某个引脚的形式）看门狗，则会导致看门狗重启整个系统．所以，从用户使用的角度来看，用户通常是会设计一个周期性"喂"看门狗的程序，如果内核崩溃恐慌导致系统挂起，则该程序无法继续"喂"狗，看门狗超时导致系统重启．
+
 ![看门狗原理](../resource/img/2_3_watchdog_run.svg)
 
+## 飞腾派Linux源码中的看门狗操作接口实现
 
 如上所述，一个看门狗驱动，至少需要提供让用户可以设置超时，启动/关闭看门狗，"喂＂狗等等的接口．因此，在飞腾派Linux内核源码的`include/linux/watchdog.h`文件中，我们可以看到这样的定义
 ```c
@@ -131,6 +136,7 @@ static int sbsa_gwdt_start(struct watchdog_device *wdd)
 
 对该三个寄存器的写入，会直接导致sys_cnt+WOR寄存器储存的值被更新到WCV寄存器中．而sys_cnt的计数值大于当前WCV寄存器存储的比较值则会导致看门狗超时．
 
+## 看门狗驱动的Rust实现
 
 为了让Arceos支持对这三个寄存器进行读取写入，我们需要将三个寄存器的地址空间映射到内核虚拟空间中，在`configs/platforms/aarch64-phytium-pi.toml`文件中，修改`mmio-regions`部分，添加上对看门狗的支持.
 ```toml
@@ -170,7 +176,14 @@ mmio-regions = [
 wdt0-paddr = 0x2804_0000         # uint
 wdt1-paddr = 0x2804_2000         # uint
 ```
-在`axhal/src/platform/aarch64_common`文件夹下创建`sbsa_wdt.rs`文件，之后我们就可以参照之前linux源码中的实现，来完成看门狗使能，设置超时和关闭看门狗的功能
+在`axhal/src/platform/aarch64_common`文件夹下创建`sbsa_wdt.rs`文件，之后我们就可以参照之前linux源码中的实现，来完成看门狗使能，设置超时和关闭看门狗的功能，因此，我们需要实现如下接口：
+|接口名称|参数|调用范例|简要功能说明|
+|:-:|:-:|:-:|:-:|
+|start_watchdog|无|start_watchdog()|启动看门狗|
+|set_watchdog_timeout|timeout|set_watchdog_timeout(6)|设置看门狗超时，参数单位为秒|
+|stop_watchdog|无|stop_watchdog()|停止看门狗|
+|ping_watchdog|无|ping_watchdog()|喂看门狗，重置计数器|
+
 ```rust
 /// Start Watchdog
 pub fn start_watchdog() {
@@ -213,6 +226,8 @@ pub fn ping_watchdog() {
     }
 }
 ```
+
+
 接下来，我们进行测试，我们可以选择在内核中启用看门狗，并设置超时时间为6秒，
 ```rust
 super::aarch64_common::sbsa_wdt::set_watchdog_timeout(6);
