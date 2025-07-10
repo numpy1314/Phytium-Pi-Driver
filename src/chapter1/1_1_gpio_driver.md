@@ -15,11 +15,12 @@
 *对于一些简单的设备，qemu能够很好的进行模拟。因此，对于部分没有开发板而想尝试进行驱动开发学习的同学，我们提供了基于qemu的部分实验。*
 
 ### 实验原理
-- *gpio* 模块介绍
+#### *gpio* 模块介绍
 
-  本次实验使用的gpio模块为[*pl061*](https://developer.arm.com/Processors/PL061), 它是arm提供的一个集成化的gpio模块，具有8个引脚，具备常见的gpio功能, qemu也能对这个设备进行模拟（可以使用 `qemu-system-aarch64 --device help` 来查看qemu支持的设备）。
+  本次实验使用的gpio模块为*pl061*:<https://developer.arm.com/Processors/PL061>, 它是arm提供的一个集成化的gpio模块，具有8个引脚，具备常见的gpio功能, qemu也能对这个设备进行模拟（可以使用 `qemu-system-aarch64 --device help` 来查看qemu支持的设备）。
 
-- *pl061* 相关寄存器介绍（**注意**：不同的外设有不同的寄存器，对于驱动工程师来说，阅读外设datasheet是必不可少的技能。所以建议暂时先跳过本节，阅读后再来验证自己的想法）
+#### *pl061* 相关寄存器介绍
+  **注意**：*不同的外设有不同的寄存器，对于驱动工程师来说，阅读外设datasheet是必不可少的技能。所以建议暂时先跳过本节，阅读后再来验证自己的想法。 寄存器介绍位于可以在* [pl061_datasheet](#pl061_datasheet)的 3.3 章节中找到。
   - *GPIOIS* 和 *GPIOIEV*
     
     这两个寄存器的宽度都为为8bit，对应8个引脚。这两个寄存器共同决定了某个引脚的中断触发方法。他们按如下的方式决定中断类型。
@@ -31,10 +32,26 @@
     |1|0|低电平触发|
     |1|1|高电平触发|
 
-- *GPIOIE*
+  - *GPIOIE*
     
     全称是 *PrimeCell GPIO interrupt enable register*，翻译过来就是中断使能寄存器。宽度为8bit，对应8个引脚。每一个bit用来配置对应引脚的是否使能中断，1是使能，0是不使能。
+  
+#### 找到基地址和中断号
+  有了对gpio寄存器的定义，现在最重要的是知道这些寄存器被[映射](#memory-mapped-io)到cpu的什么地方。已经知道这块内存的大小（所有寄存器加起来的长度），现在关键的找到这块内存起始于什么地方。这就是找到基地址的工作。这个地址通常由IP设计公司（arm）所建议，soc设计厂商最终确定。对于软件开发者来说，想要获取这个信息主要有以下两个途径：
+  - pci(e)总线
+    pci总线是一种规范，通过对总线上的设备进行枚举，我们最终可以获取设备的基地址和长度。
+  - device tree
+    device tree最开始出现于linux内核，描述了各种信息，包括设备基地址，中断触发方式，兼容的驱动等等。soc厂商通常会提供设备树的二进制。
+  
+  对于嵌入式平台，device tree是一种常用的方法。这次实现也需要通过设备树的方法获取基地址。不幸的是 qemu 没有直接提供他的设备树，但是启动的时候确实会传递一个默认的设备树。我们通过[导出qemu设备树的方法](#导出qemu设备树)来获取设备树。获得了dts之后，我们在这个dts中搜索 "pl061",可以看到这个：
 
+  ![1_1_qemu_device_tree.png](../resource/img/1_1_qemu_device_tree.png)
+  
+  *pl061@9030000*说明基地址为 0x9030000。
+  
+  *interrupts = <0x00 0x07 0x04>* 的 0x00 说明是外部中断，0x7表示为7号中断，0x4表示为边缘触发。
+  
+  这样，我们找到了这个设备的基地址是 0x9030000，中断号是外部中断7，映射到gic控制器中为 *32(外部中断固定偏移)+7 = 39*。
 ### 实验过程
 - 在arceos代码仓库下，使用example为helloworld，先尝试运行得到以下结果。
   <details>
@@ -233,12 +250,15 @@
   我们最终要实现led灯的"心跳"效果，即 亮1秒，暗1秒，如此往复循环。
 
 ### 寄存器定义
-  *notice： 飞腾派上的GPIO模块操作方式都是统一的，唯一的区别是有的gpio需要先进行引脚复用的配置。具体操作可以参照参考飞腾派裸机开发手册进行配置。本次使用的引脚不需要配置，因为笔者没有找到这个GPIO的引脚复用配置寄存器。按照官方文档描述，没有找到就是不需要配置，所以可以认为这个引脚只有gpio功能。*
+  *notice： 飞腾派上的GPIO模块操作方式都是统一的，唯一的区别是有的gpio需要先进行引脚复用的配置。具体操作可以参照参考飞腾派裸机开发手册。本次使用的引脚不需要配置，因为笔者没有找到这个GPIO的引脚复用配置寄存器。按照官方文档描述，没有找到就是不需要配置，所以可以认为这个引脚只有gpio功能。*
   
-  对于输入输出，我们只关心以下三个寄存器，他们的定义可以在飞腾派软件开发手册很轻松的找到（而且是中文～），这里就不做复制粘贴的工作了。
-  - GPIO_SWPORT_DR (0x00)
-  - GPIO_SWPORT_DDR (0x04)
-  - GPIO_EXT_PORT (0x08)
+  对于输入输出，我们只关心以下寄存器，他们的定义可以在飞腾派软件开发手册很轻松的找到（位于[#飞腾派软件开发手册]的 *5.27.4 寄存器说明* 章节）。
+  
+| 寄存器名称 | 位宽 | 寄存器定义 |
+| --- | --- | --- |
+| GPIO_SWPORT_DR | 16bit | 每一bit定义了对应引脚的输出值(当配置为输出模式时)。如果该引脚被配置为输出模式，写入这个寄存器的值将会被输出。1对应高电平，0对应低电平。|
+| GPIO_SWPORT_DDR | 16bit | 每一bit定义了对应引脚的in/out属性。1代表该引脚为输出模式，0代表该引脚为输入模式。|
+| GPIO_EXT_PORT | 16bit | 每一bit定义了对应引脚的引脚值。1代表对应引脚输出为高，0代表输出为低。 |
 
 ### 实验过程
 - 编写驱动代码，实现 *set_dir* 和 *set_data* 操作，示例代码如下：
@@ -484,10 +504,14 @@
 
 - 目前驱动代码位于 `examples/helloworld/main.c` 中，这不是一种正确的做法。参考 `modules/axhal/src/platform/aarch64_common/pl011.rs` 的实现，在同级目录下实现 pl061.rs。 rust 提供了如 `tock_registers` 这样的可以用来定义寄存器的crate，用起来！
 - 关机函数实际上是触发了一个异常而导致的关机，当把上一步完成后，换成 `axhal::misc::terminate` 来优雅的关机！
-- 实验2的完整代码在[这儿](https://github.com/arceos-org/arceos/commit/2e7837a786d13b0a77804d15a10f614ef715150d)。
+- 实验2的完整代码在<https://github.com/arceos-org/arceos/commit/2e7837a786d13b0a77804d15a10f614ef715150d>。
 
 ## 参考资料
-- [pl061_datasheet](https://github.com/elliott10/dev-hw-driver/blob/main/docs/GPIO-controller-pl061-DDI0190.pdf)
-- [导出qemu设备树](https://blog.51cto.com/u_15072780/3818667)
-- [飞腾派硬件原理图](https://github.com/elliott10/dev-hw-driver/blob/main/phytiumpi/docs/%E9%A3%9E%E8%85%BE%E6%B4%BEv3%E5%8E%9F%E7%90%86%E5%9B%BE%20cek8903_piq_v3_sch20240506.pdf)
-- [飞腾派软件开发手册](https://github.com/elliott10/dev-hw-driver/blob/main/phytiumpi/docs/飞腾派软件编程手册V1.0.pdf)
+### pl061_datasheet:
+<https://github.com/elliott10/dev-hw-driver/blob/main/docs/GPIO-controller-pl061-DDI0190.pdf>
+### 导出qemu设备树:
+<https://blog.51cto.com/u_15072780/3818667>
+### 飞腾派硬件原理图:
+<https://github.com/elliott10/dev-hw-driver/blob/main/phytiumpi/docs/%E9%A3%9E%E8%85%BE%E6%B4%BEv3%E5%8E%9F%E7%90%86%E5%9B%BE%20cek8903_piq_v3_sch20240506.pdf>
+### 飞腾派软件开发手册
+ <https://github.com/elliott10/dev-hw-driver/blob/main/phytiumpi/docs/飞腾派软件编程手册V1.0.pdf>
