@@ -2,7 +2,7 @@
 
 本教材仍在撰写和调整中
 
-<object data="resource/img/2_3_watchdog_run.svg" type="image/svg+xml"></object>
+<iframe src="resource/html/2_3_watchdog_run.html" width="100%" height="600px" frameborder="0"></iframe>
 
 - [前言](preface.md)
 
