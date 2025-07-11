@@ -1,7 +1,7 @@
 # 前言
 
 本教材仍在撰写和调整中
-
+<img src="resource/img/2_3_watchdog_run.svg" alt="svg测试">
 - [前言](preface.md)
 
 - [第零章：环境配置与预备知识](chapter0/chapter_0.md)
