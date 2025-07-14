@@ -98,3 +98,27 @@ ArceOS最新主线仓库（https://github.com/arceos-org/arceos）
 ![](./img/0_3_Phytium-Pi.png)
 - 底层接口视图与说明
 ![](./img/0_3_Phytium-Pi(bottom).png.png)
+
+## 驱动是什么，为什么要在Phytium-Pi上开发驱动？
+驱动（Driver）是操作系统与硬件设备之间的​​双向通信桥梁​​：
+- 向上​​：为操作系统提供统一的设备操作接口（如read/write），屏蔽硬件差异；
+​- ​向下​​：将操作系统的通用指令转换为硬件可执行的​​设备专属命令​​（如寄存器配置、DMA传输控制）
+- 驱动功能
+
+| ​​功能​ | 作用描述​ | 飞腾派开发关联​ |
+| :----:| :----: | :----: |
+| 硬件抽象​ | 统一同类设备接口（如所有串口均实现serial_write()） | ArceOS需为不同UART型号（如PL011）提供统一接口 |
+| 资源管理​ | 分配中断号(IRQ)、内存映射区(MMIO)、DMA缓冲区 | 飞腾派驱动需通过axdma模块申请物理连续内存 |
+| ​​指令转换 | 将系统调用（如open()）→ 设备控制指令（如UART寄存器配置） | 需查阅飞腾派芯片手册获取外设寄存器地址 |
+| ​​状态监控 | 实时反馈设备状态（如网卡数据包到达触发中断） | 需注册ISR到handler_table并处理中断 |
+
+## 开发驱动的过程中有哪些步骤？每一步需要做什么？
+### 一、开发准备阶段
+1.​​环境配置
+- 交叉编译工具链​​：安装ARMv8目标（aarch64-unknown-none），使用rustup target add aarch64-unknown-none
+- ​​ArceOS源码获取​​：git clone https://github.com/arceos-org/arceos 
+- 飞腾派硬件手册​​：查阅 https://github.com/elliott10/dev-hw-driver/tree/main/phytiumpi/docs 中的相关资料确认外设寄存器地址与中断号（如UART基地址0x2800_1000）
+
+2.了解相关驱动的工作原理
+- 可参考已有phytium-pi嵌入式linux相关驱动实现 https://gitee.com/phytium_embedded/phytium-linux-kernel
+- 
