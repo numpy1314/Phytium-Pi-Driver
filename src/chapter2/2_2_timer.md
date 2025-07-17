@@ -1,4 +1,4 @@
-# 2.1 NOC时钟驱动
+# 2.2 Timer 驱动
 
 ## noc介绍
 *noc* 是 *network on chip* 的缩写。简单的来说，它是arm公司设计的一种总线。
