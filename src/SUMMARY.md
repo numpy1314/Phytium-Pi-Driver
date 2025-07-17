@@ -23,7 +23,7 @@
   * [* SPI驱动开发](chapter3/3_3_spi_driver.md)
   
 - [* 第四章：中断](chapter4/chapter_4.md)
-  * [GIC](chapter4/4_1_gic.md)
+  * [GIC驱动](chapter4/4_1_gic.md)
   * [i2c的中断实现](chapter4/4_2_i2c_interrupt.md)
   * [spi的中断实现](chapter4/4_3_spi_interrupt.md)
 
