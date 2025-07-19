@@ -2,17 +2,46 @@
 
 ## 0.2.1 运行环境
 
-基础运行环境可以参考如下网址,搭建wsl+qemu的开发环境
+### 编译环境
 
-<https://rcore-os.cn/arceos-tutorial-book/ch01-00.html>
+编译依赖ubuntu操作系统，使用的winodws操作系统的同学可以通过安装[WSL](https://learn.microsoft.com/zh-cn/windows/wsl/install#step-4---download-the-linux-kernel-update-package)（linux 子系统）或者[VMwork](https://www.vmware.com/cn/products/workstation-pro/workstation-pro-evaluation.html)虚拟机来安装ubuntu。
+安装好ubuntu 后需要安装必要的一些组件可直接执行如下指令
+
+```bash
+# 安装git 拉取代码
+sudo apt install git
+# 输入自己github的邮箱用户名
+git config --global user.name "runoob"
+git config --global user.email test@runoob.com
+# 生成ssh密钥  
+ssh-keygen -t rsa -b 4096 -C "your.email@example.com"
+
+# 安装编译qemu所需的依赖包
+sudo apt install autoconf automake autotools-dev curl libmpc-dev libmpfr-dev libgmp-dev \
+              gawk build-essential bison flex texinfo gperf libtool patchutils bc \
+              zlib1g-dev libexpat-dev pkg-config  libglib2.0-dev libpixman-1-dev libsdl2-dev \
+              git tmux python3 python3-pip ninja-build
+```
+
+
+> **注释：**  ①基础运行环境可以参考[Arcos指导书](https://rcore-os.cn/arceos-tutorial-book/ch01-00.html) ②想要把修改上传到github仓库还需要 [配置ssh密钥](https://blog.csdn.net/weixin_42310154/article/details/118340458)
 
 ### vscode使用
 由于是使用的wsl（inux子系统）作为基础编译环境，默认提供的是命令行搭配vim的方式来编辑文件。这可能并不是大部分人喜欢的开发环境，所以推荐使用vscode搭配remote-ssh插件来进行开发，并且该插件对于wsl是有很好的兼容性的，安装插件后直接选择连接wsl即可使用。
-<p align="center">
-  <img src="../resource/img/0_2_1_1_install_remote_ssh.png" alt="安装remote-ssh插件" width="600"/>
-  <img src="../resource/img/0_2_1_2_connect_wsl.png" alt="连接到wsl" width="600"/>
-  <img src="../resource/img/0_2_1_3_open_remote_folder.png" alt="打开远程文件夹" width="600"/>
-</p>
+<div style="text-align: center;">
+  <figure style="display: inline-block; margin: 0 auto; text-align: center;">
+    <img src="../resource/img/0_2_1_1_install_remote_ssh.png" alt="安装remote-ssh插件" width="700">
+    <figcaption>图1：安装Remote-SSH插件的界面截图</figcaption>
+  </figure>
+  <figure style="display: inline-block; margin: 0 auto; text-align: center;">
+    <img src="../resource/img/0_2_1_2_connect_wsl.png" alt="连接到wsl" width="700">
+    <figcaption>图2：选择连接到wsl</figcaption>
+  </figure>
+  <figure style="display: inline-block; margin: 0 auto; text-align: center;">
+    <img src="../resource/img/0_2_1_3_open_remote_folder.png" alt="打开远程文件夹" width="700">
+    <figcaption>图3：打开工作目录</figcaption>
+  </figure>
+</div>
 
 ### qemu 补充
 在第一节的指导手册上使用的qemu版本是7.0.2，而很多模拟的外设是在后续版本才加到qemu中的。所以推荐从官网安装最新版或指定版本[qemu官网](https://www.qemu.org/download)
@@ -31,14 +60,12 @@ make install
 首先运行Arceos需要依赖其他系统来提供uboot,所以运行Arceos第一步是先烧录提供的飞腾派OS。
 
 ### 烧录飞腾派OS
-<https://pan.baidu.com/s/1pStiyqohrB3SxHAFFk8R6Q>  (提取码：dzdv)
+[飞腾派资料包](https://pan.baidu.com/s/1pStiyqohrB3SxHAFFk8R6Q)(提取码：dzdv)
 > **注释：** 5-系统镜像/1-PhytiumPIOS（基于Debian）/phytiumpiosv2.1资料包/4G内存-optee版/sdcard.img.7z，解压缩。
 
 下载解压后使用烧录工具将系统镜像烧录到TF卡，之后将TF插到飞腾派的卡槽中，最后连接电源线上电。
-烧录工具推荐使用 balenaEtcher  
-[下载地址](https://etcher.balena.io/)
-也可以使用win32 disk image 
-[下载地址](https://sourceforge.net/projects/win32diskimager/)
+
+烧录工具推荐使用[balenaEtcher](https://etcher.balena.io/)也可以使用[win32 disk image](https://sourceforge.net/projects/win32diskimager/)
 
 > **注释：** 常用的手机以及派上的小卡正式名叫做TF或者说microSD 大的是SD卡当然统称为sd卡也是可以的  具体区别可查看
 [TF卡与SD卡](https://www.sd-nand.com/news/technology/312.html)
