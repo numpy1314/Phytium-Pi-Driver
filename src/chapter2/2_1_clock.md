@@ -9,4 +9,27 @@
 + mux-clock: 表示可以在多个父时钟之间选择一个作为输出源的时钟节点。它通过切换父时钟，实现时钟源的灵活选择，适用于需要根据不同工作模式或性能需求动态切换时钟源的场景。相关配置可在驱动或设备树中完成．
 + composite-clock: `composite-clock` 是 Linux 时钟框架中的一种复合型时钟节点，集成了分频（divider）、选择（mux）和开关（gate）等多种功能。它可以灵活地组合这些功能，实现复杂的时钟控制需求。`composite-clock` 适用于需要同时支持时钟源切换、分频和使能控制的场景，相关配置可在驱动或设备树中完成．
 
-在linux中，时钟的管理依赖于[Common Clk Framework](https://docs.kernel.org/driver-api/clk.html)所提供的．
+在linux中，时钟的管理依赖于[Common Clk Framework](https://docs.kernel.org/driver-api/clk.html)．CCF将这些时钟设备的共性抽象出来，使用`struct clk_hw`来表示
+```rust
+/**
+ * struct clk_hw - handle for traversing from a struct clk to its corresponding
+ * hardware-specific structure.  struct clk_hw should be declared within struct
+ * clk_foo and then referenced by the struct clk instance that uses struct
+ * clk_foo's clk_ops
+ *
+ * @core: pointer to the struct clk_core instance that points back to this
+ * struct clk_hw instance
+ *
+ * @clk: pointer to the per-user struct clk instance that can be used to call
+ * into the clk API
+ *
+ * @init: pointer to struct clk_init_data that contains the init data shared
+ * with the common clock framework. This pointer will be set to NULL once
+ * a clk_register() variant is called on this clk_hw pointer.
+ */
+struct clk_hw {
+	struct clk_core *core;
+	struct clk *clk;
+	const struct clk_init_data *init;
+};
+```
