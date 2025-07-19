@@ -28,11 +28,20 @@ sudo apt install autoconf automake autotools-dev curl libmpc-dev libmpfr-dev lib
 
 ### vscode使用
 由于是使用的wsl（inux子系统）作为基础编译环境，默认提供的是命令行搭配vim的方式来编辑文件。这可能并不是大部分人喜欢的开发环境，所以推荐使用vscode搭配remote-ssh插件来进行开发，并且该插件对于wsl是有很好的兼容性的，安装插件后直接选择连接wsl即可使用。
-<p align="center">
-  <img src="../resource/img/0_2_1_1_install_remote_ssh.png" alt="安装remote-ssh插件" width="700"/>
-  <img src="../resource/img/0_2_1_2_connect_wsl.png" alt="连接到wsl" width="700"/>
-  <img src="../resource/img/0_2_1_3_open_remote_folder.png" alt="打开远程文件夹" width="700"/>
-</p>
+<div style="text-align: center;">
+  <figure style="display: inline-block; margin: 0 auto; text-align: center;">
+    <img src="../resource/img/0_2_1_1_install_remote_ssh.png" alt="安装remote-ssh插件" width="700">
+    <figcaption>图1：安装Remote-SSH插件的界面截图</figcaption>
+  </figure>
+  <figure style="display: inline-block; margin: 0 auto; text-align: center;">
+    <img src="../resource/img/0_2_1_2_connect_wsl.png" alt="连接到wsl" width="700">
+    <figcaption>图2：选择连接到wsl</figcaption>
+  </figure>
+  <figure style="display: inline-block; margin: 0 auto; text-align: center;">
+    <img src="../resource/img/0_2_1_3_open_remote_folder.png" alt="打开远程文件夹" width="700">
+    <figcaption>图3：打开工作目录</figcaption>
+  </figure>
+</div>
 
 ### qemu 补充
 在第一节的指导手册上使用的qemu版本是7.0.2，而很多模拟的外设是在后续版本才加到qemu中的。所以推荐从官网安装最新版或指定版本[qemu官网](https://www.qemu.org/download)
