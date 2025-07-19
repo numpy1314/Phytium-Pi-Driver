@@ -15,8 +15,8 @@
   * [复位与引脚复用驱动](chapter1/1_3_reset_pinmux.md)
 
 - [第二章：时钟管理类驱动](chapter2/chapter_2.md)
-  * [* NOC时钟驱动](chapter2/2_1_noc_clock.md)
-  * [时钟源驱动](chapter2/2_2_clock_source.md)
+  * [* 时钟设备驱动](chapter2/2_1_clock.md)
+  * [* Timer驱动](chapter2/2_2_timer.md)
   * [* 看门狗驱动](chapter2/2_3_watchdog.md)
 
 - [第三章：外设协议类驱动](chapter3/chapter_3.md)
@@ -24,10 +24,10 @@
   * [* I2C驱动开发](chapter3/3_2_i2c_driver.md)
   * [* SPI驱动开发](chapter3/3_3_spi_driver.md)
   
-- [* 第四章：驱动设计模式](chapter4/chapter_4.md)
-  * [* 测试驱动开发](chapter4/4_1_TDD.md)
-  * [* 设计模式](chapter4/4_2_design_patterns.md)
-  * [* 注意事项](chapter4/4_3_precautions.md)
+- [* 第四章：中断](chapter4/chapter_4.md)
+  * [GIC](chapter4/4_1_gic.md)
+  * [i2c的中断实现](chapter4/4_2_i2c_interrupt.md)
+  * [spi的中断实现](chapter4/4_3_spi_interrupt.md)
 
 - [第五章：高速传输类驱动](chapter5/chapter_5.md)
   * [DMA驱动开发](chapter5/5_1_dma_driver.md)
@@ -59,7 +59,7 @@
   * [CANFD驱动](chapter10/10_1_canfd_driver.md)
   * [EtherCAT驱动](chapter10/10_2_ethercat_driver.md)
 
-- [附录：训练营资源](appendix/appendix.md)
-  * [训练营课表](appendix/A_1_schedule.md)
-  * [项目选题指南](appendix/A_2_project_guide.md)
-  * [优秀项目案例](appendix/A_3_case_studies.md)
+- [附录](appendix/appendix.md)
+  * [* 测试驱动开发](appendix/A_1_TDD.md)
+  * [* 设计模式](appendix/A_2_design_patterns.md)
+  * [* 注意事项](appendix/A_3_precautions.md)
