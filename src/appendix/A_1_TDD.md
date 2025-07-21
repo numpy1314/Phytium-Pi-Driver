@@ -1,4 +1,4 @@
-# A.1 测试驱动开发
+# 测试驱动开发
 
 测试驱动开发（TDD）是一种软件开发方法，强调在编写实际代码之前先编写测试用例。它的主要步骤包括：
 
@@ -41,34 +41,34 @@
 
 1. `Cargo test` 默认如何工作?
 
-    `cargo test` 命令会编译项目中的所有测试代码，`libtest` 收集 `#[test]` 标记的函数，成一个可执行文件，然后运行这个可执行文件来获取执行结果。
+   `cargo test` 命令会编译项目中的所有测试代码，`libtest` 收集 `#[test]` 标记的函数，成一个可执行文件，然后运行这个可执行文件来获取执行结果。
 
 2. 我们从哪里开始使用自定义测试框架？
 
-    在 `Cargo.toml` 中添加
+   在 `Cargo.toml` 中添加
 
-    ```toml
-    [[test]]
-    name = "test"
-    path = "tests/test.rs"
-    harness = false
-    ```
+   ```toml
+   [[test]]
+   name = "test"
+   path = "tests/test.rs"
+   harness = false
+   ```
 
 3. 定义测试函数声明规范
 
-    ...
+   ...
 
 4. 收集所有测试函数
 
-    ...
+   ...
 
 5. 构建`no-std`裸机程序
 
-    ...
+   ...
 
 6. 修改 `Cargo runner`为`Qemu`
 
-    ...
+   ...
 
 ### 项目搭建
 
