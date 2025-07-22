@@ -9,7 +9,7 @@
 
 noc的示意图可以如下:
 
-![overview](../resource/img/2_1_noc_overview.jpeg)
+![overview](../resource/img/2_2_noc_overview.jpeg)
 
 每个节点都被视为是一种小型路由，他们之间通过发送异步的包进行通信，就好像是一个局域网。中间的noc总线，则可以视为是接入交换机。
 这样，就不必维持路由和路由之间很大数量的连线，从而提高频率，也能支持更多的设备
@@ -31,21 +31,21 @@ generic timer arm公司提出的一种硬件上的设计框架。在早期单核
 
 非虚拟化：
 
-![system_counter](../resource/img/2_1_system_counter.png)
+![system_counter](../resource/img/2_2_system_counter.png)
 
 虚拟化：
 
-![system_counter_virtual](../resource/img/2_1_system_counter_virtual.png)
+![system_counter_virtual](../resource/img/2_2_system_counter_virtual.png)
 
 每一个核有单独的timer，以及一个全局的system counter，它们通过system time bus相连。此外，对于虚拟化场景，还额外增加了CNTVOFF这个寄存器，主要作用是对于让虚拟机感受不到非调度时间的流逝。对于这个架构保证了对于所有的核来说，timer的clock都是一致的。产生的中断位于gic的ppi区，产生的中断会分发到对应的核上。
 
-## 主要寄存器介绍
+### 主要寄存器介绍
 - CNTFRQ_EL0: EL1级别物理system counter时钟的频率，对于EL1及以上，这个寄存器是只读的。
 - CNTP_CTL_EL0： EL1级别物理timer的控制器，用于开启/关闭这个核的timer中断
 - CNTP_TVAL_EL0：EL1级别物理timer的时钟值，当system counter值 >= 这个值，会产生一个可能的中断
 - CNTPCT_EL0：EL1级别物理timer的比较值，当这个值被写时，会将 system_count + CNTPCT_EL0 写入 CNTP_TVAL_EL0。
 
-## 多核时钟驱动实验步骤
+### 多核时钟驱动实验步骤
 - timer 初始化代码
   - main core获取 system counter的 frequency
   ```rust
@@ -200,8 +200,56 @@ generic timer arm公司提出的一种硬件上的设计框架。在早期单核
   </details>
 - 可以看出，4个cpu的中断每10ms被触发一次，符合预期。
 
-## 实验总结
+###  实验总结
 验证了arm多核架构下的timer。
+
+## 飞腾派外设timer
+
+沸腾派共有38个外设timer，其中0-15支持基础的 *timer*, *tacho_meter* 以及单纯的 *capture* 功能， 16-37只有timer功能。由于已经有 *generic timer* 来为每个cpu提供可靠的timer中断，通常来说，飞腾派的这些外设timer会主要被用于提供tachometer功能。它们的时钟频率都是50MHz。
+
+在飞腾派的设备树中可以找到对这些设备的定义。关键字：*tacho*。
+![设备树中的tacho](../resource/img/2_2_设备树中的tacho.png)
+
+### 核心特性
+- timer功能
+
+与generic timer类似，计数器当达到设定值之后，产生一个中断给cpu核。不过需要注意的是，generic timer产生的中断是每个cpu独立的，而外设timer产生的中断会通过gic，最终通知到某一个cpu上，具体通知策略得看gic的配置。
+
+常见的配置方式如下(具体参照飞腾派软件开发手册的5.25.2.6章节)：
+  - 设置对应timer外设功能为 timer
+  - 使能相关中断
+  - 配置定时计数值，超过这个值并且配置了中断，系统将能收到中断
+  - 使能计数器，开始计数
+  - 支持 free_run 等配置
+
+肯定的是，外设timer作为多核场景的调度源是不合适的，这种timer应当被用于对外设的计数等场景。
+
+- tachometer 功能
+
+翻译过来就是"转速表"或"转速计，通过与电机的协作来完成对电机的转速计数：每当电机转动一圈，则电机通过tacho线触发一次信号（通常通过光电编码器或者霍尔传感器）。
+tachometer在一次周期里对这个信号的数量进行技术，就能够获取外部某个设备的转速，比如说风扇。
+
+常常与pwm结合，通过pid等控制算法来控制电机转速。
+
+基础工作原理如下(具体参照飞腾派软件开发手册的5.25.2.7章节)：
+ - 设置对应timer外设功能为 tachometer，并配置外部触发方式(边沿 or 高/低电平)
+ - 配置定时计数器值，这个值*50MHz 就是一次计数周期
+ - 配置高转数值和低转速值，转速过高或者过低会尝试触发一次中断
+ - 使能相关中断，比如过快中断，或者过慢中断
+ - 中断触发时软件进行可以读取转速值，并相应的调整pwm占空比来调整转速。
+
+- capture 功能
+
+个人认为是 tachometer 的简化版本：对一段时间内发生的脉冲数量进行计数，当计数达到阈值之后，产生一次相应的中断。
+
+基础工作原理如下(具体参照飞腾派软件开发手册的5.25.2.8章节)：
+ - 设置对应timer外设功能为 capture, 并配置外部触发方式(边沿 or 高/低电平)
+ - 配置cnt值，7bits
+ - 使能相关中断
+ - 当秒冲数量达到cnt值之后，会触发一次中断，然后重新计数。
+
+### fan controll实验
+*note: 本实验需要具有 1_2_pwd_driver的前置知识。*
 
 ## 参考资料
 [arm_generic_timer](https://developer.arm.com/documentation/102379/0104/What-is-the-Generic-Timer-)
