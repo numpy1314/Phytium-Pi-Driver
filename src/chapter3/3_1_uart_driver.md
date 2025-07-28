@@ -1,11 +1,8 @@
 # 3.1 UART串口驱动
+
 ## *UART* 介绍
-### 3线串口连接图
-一个典型的三线串口连接图如下：
+### 1.1 模块概述
 
-![图1](../resource/img/3_1_3线串口连线图.png)
-
-### 协议介绍
 *uart: universal asynchronous receiver/transmitter*，通用异步发送/接受器，是嵌入式设备中最常用全双工通信协议之一。关于它的详细介绍，可以参考 [这篇文章](https://www.analog.com/cn/resources/analog-dialogue/articles/uart-a-hardware-communication-protocol.html)。对于软件工程师来说，以下几个概念是必须要掌握的。
 - 波特率
   
@@ -30,24 +27,36 @@
 
     一些高级的uart芯片集成了[调制/解调](https://www.cnblogs.com/jason-lu/articles/3171907.html)的功能，这涉及到了通信原理的一些知识，其配置也对应的复杂更多。飞腾派上搭载9线串口就具有这个功能，不过幸运的是本次实验不涉及这块内容，所以在看寄存器定义时，也不需要对这部分有深入理解。
 
-### 时序图
+### 1.2 硬件接口介绍
+- **3线串口连接图**
+一个典型的三线串口连接图如下：
+
+![图1](../resource/img/3_1_3线串口连线图.png)
+
+### 1.3 时序图
+
 *notice: 这里的时钟不会体现在传输线上，展示设备内部接受/发送时序。*
 
 这个图展示了一帧数据的可能结构。
 
 ![图2](../resource/img/3_1_串口协议.png)
 
-## 飞腾派 *UART* 串口驱动实验
+## 2. 接口表
+完整代码在这儿: <https://github.com/chenlongos/appd/commit/897c85c5952a123fa27f8612a4a5c86d37d679e3>
+- **接口表**
 
-### 实验目标
-- 编写代码实现串口驱动
-  - 初始化为8N1模式，波特率为115200，非中断模式
-  - 没有tx/rx FIFO队列，单次接收/发送1一个byte。
-- 验证串口通信的基本原理
+| API函数 | 描述         | 参数           | 返回值         |
+| --- | --- |  --- | --- |
+| PhytiumUart::new | 新的飞腾派uart实例 |  base:uart控制器基地址 | uart控制器 |
+| PhytiumUart::init_no_irq | 创建非irq模式的uart控制器 | self, clock_hz: uart时钟频率，baude_rate: uart波特率 | none |
+| PhytiumUart::read_byte_poll | 轮询的方式读取一个字节 | self | u8，一个读取的字节 |
+| PhytiumUart::put_byte_poll | 轮询的方式输出一个字节 | self, byte:输出的字节 | none |
 
-### 实验原理
-根据原理图，我们使用飞腾派的*UART2*串口，它被连线到*J1*端子板的8(tx),10(rx)口上。用[杜邦线](https://baike.baidu.com/item/%E6%9D%9C%E9%82%A6%E7%BA%BF/197049)将8口与10口相连接，uart2 tx发出的数据会被uart rx口被收到。
-![连线图](img/3_1_连线.jpg)
+- **调用顺序**
+首先进行 new -> init_no_irq, 之后可以按照需求进行读取或者写入字节。
+
+
+## 3. 寄存器结构
 
 我们主要关注下面几个寄存器，这些寄存器的定义可以在[飞腾派软件开发手册](#参考资料)里找到。
 - UARTDR: 数据寄存器，用来传输/接受最大8位的数据
@@ -59,16 +68,46 @@
 - UARTLCR：控制寄存器，控制uart的一些行为。
 - UARTIMSC：控制是否打开中断。
   
-#### uart初始化步骤
+| 寄存器名称 | 偏移 |寄存器定义 |
+| --- | --- |  --- |  
+| UARTDR |  0x000 | 数据寄存器 |
+| UARTRSR/UARTECR | 0x004 | 接收状态寄存器/错误清除寄存器 |
+| UARTFR |  0x018 | 标志寄存器 |
+| UARTILPR | 0x020 |  低功耗计数寄存器 |
+| UARTIBRD | 0x024 | 波特率整数值配置寄存器 |
+| UARTFBRD |  0x028 | 波特率小数值配置寄存器 |
+| UARTLCR_H |  0x02C | 线控寄存器 |
+| UARTCR |  0x030 | 控制寄存器 |
+| UARTIFLS | 0x034 | FIFO 阈值选择寄存器 |
+| UARTIMSC |  0x038  | 中断屏蔽选择/清除寄存器 |
+| UARTRIS | 0x03C | 中断状态寄存器 |
+| UARTMIS | 0x040 | 中断屏蔽状态寄存器 |
+| UARTICR | 0x044 | 中断清除寄存器 |
+| UARTDMACR | 0x048 | DMA 控制寄存器 |
+
+### uart初始化步骤
 参考 [飞腾派软件开发手册](#参考资料) 的 5.22.1.1章节。
 
-#### 发送数据操作流程
+### 发送数据操作流程
 参考 [飞腾派软件开发手册](#参考资料) 的 5.22.1.2章节。
 
-#### 接收数据操作流程
+### 接收数据操作流程
 参考 [飞腾派软件开发手册](#参考资料) 的 5.22.1.3章节。
 
-### 实验步骤
+
+## 4. 飞腾派 *UART* 串口驱动实验
+
+### 4.1 实验目标
+- 编写代码实现串口驱动
+  - 初始化为8N1模式，波特率为115200，非中断模式
+  - 没有tx/rx FIFO队列，单次接收/发送1一个byte。
+- 验证串口通信的基本原理
+
+### 4.2 实验原理
+根据原理图，我们使用飞腾派的*UART2*串口，它被连线到*J1*端子板的8(tx),10(rx)口上。用[杜邦线](https://baike.baidu.com/item/%E6%9D%9C%E9%82%A6%E7%BA%BF/197049)将8口与10口相连接，uart2 tx发出的数据会被uart rx口被收到。
+![连线图](img/3_1_连线.jpg)
+
+### 4.3 实验步骤
 - 根据数据手册，先使用tock-register库将寄存器定义好，将初始化函数实现。使用者通过传入一个 基地址 指向uart寄存器，返回一个不可并发的uart。
 ```rust
 // modules/axhal/src/platform/aarch64_phytium_pi/uart.rs
@@ -405,18 +444,18 @@ fn main() {
     ^C
 </details>
 
-### 实验结论
+### 4.4 实验结论
 本实验验证了uart无中断，poll mode的通信模型，实现了相应的驱动代码。
 
-### 实验代码
+### 4.5 实验代码
 完整代码可以在[这儿](https://github.com/chenlongos/appd/commit/897c85c5952a123fa27f8612a4a5c86d37d679e3)看到
 
-## qemu串口驱动实验
+## 5. qemu串口驱动实验
 
 qemu模拟的qemu-virt机器使用串口为 *pl011* 模块，寄存器作用以及地址与飞腾派是一致的，并且默认已经被 *arceos* 的初始化（不然就看不到arceos的启动所打印的信息了）。具体实现代码可以看[这个crate](https://docs.rs/arm_pl011/0.1.0/src/arm_pl011/pl011.rs.html#42-44)。这个crate默认采用了波特率为115200，8N1的通信格式。
 
 
-## 参考资料
+## 6. 参考资料
 ### pl011
 <https://developer.arm.com/documentation/ddi0183/g/programmers-model>
 ### uart协议
