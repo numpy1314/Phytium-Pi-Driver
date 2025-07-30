@@ -106,25 +106,220 @@ PWM 最关键的两个参数：频率和占空比。
 
 ### 2.1 API概述
 
-## 1. API概览
 | **功能分类**       | **API函数**            | **核心功能描述**                                  |
 |-------------------|------------------------|------------------------------------------------|
-| 初始化配置         | `configure_channel`    | 配置PWM通道参数（频率/占空比/计数模式等）          |
+| 初始化配置         | `PwmController：：new`    | 创建 PWM 驱动实例并映射硬件寄存器          |
+|                  | `configure_channel`    | 配置PWM通道参数（频率/占空比/计数模式等）          |
 | 通道控制           | `enable_channel`       | 启用指定通道输出                                |
 |                   | `disable_channel`      | 立即禁用通道输出                                |
 |                   | `safe_stop_channel`    | 安全停止通道（完成当前周期）                    |
 | 数据管理           | `push_fifo_data`       | 向FIFO模式通道推送占空比数据                    |
 | 中断处理           | `handle_interrupt`     | 处理控制器中断事件（FIFO空/计数溢出等）          |
-| 系统控制           | `global_enable`        | 全局使能所有已配置的PWM控制器               |
-| **API函数**          | **描述**                                                     | **参数**                                                     | **返回值**                                       |
-| -------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------ |
-| ​​PwmDriver::new  | 创建 PWM 驱动实例并映射硬件寄存器。 | base_addr: PWM 控制器的物理基地址 | 初始化的 PwmDriver 对象  |
-| configure_channel   | 配置 PWM 通道参数  | channel: PWM 通道号 (0-7)、config: PwmConfig 结构体，包含：frequency: PWM 频率 (Hz)、duty_cycle: 占空比 (0.0-1.0)、counting_mode: 计数模式 (Modulo/UpAndDown)、deadtime_ns: 死区时间 (纳秒)、use_fifo: 是否使用 FIFO 模式                 | Option：成功：Ok(())；失败：错误信息（如无效通道、占空比越界等）      |
-| ​​init_fifo_mode   | 初始化 FIFO 模式                    | channel: PWM 通道号、     initial_duty: 初始占空比值                              | Option：成功：Ok(())；失败：错误信息  |
-| ​​push_fifo_data    | 向 FIFO 推送占空比数据 | channel: PWM 通道号；duty_value: 16 位占空比值 | Option：成功：Ok(())；失败：错误信息          |
-| enable_channel   | 启用 PWM 通道输出 | channel: PWM 通道号 | 无  |
-| safe_stop_channel      | 安全停止 PWM 输出（防电源瞬变） | channel: PWM 通道号 | 无  |
-| enable_multiple_channels | 同时启用多个 PWM 通道 | mask: 通道掩码（bit0=通道0, bit1=通道1, ...） | 无    |
-| handle_interrupt     | 处理 PWM 中断               | 无 | 无  |
-| pwm_init  | 初始化 PWM 控制器（高级封装）                  | base_addr: PWM 控制器物理基地址                          | 初始化的 PwmDriver 对象       |
+|                   | `handle_channel_interrupt`     | 处理单个通道中断（FIFO空/计数溢出/比较匹配中断等）          |
+| 系统控制           | `PwmSystem：：new`        | 创建PWM系统（初始化8个控制器）               |
+|                   | `global_enable`        | 全局使能所有已配置的PWM控制器  |       
 
+### 2.2 API调用表
+| API函数 | 描述 | 参数 | 返回值 |
+|---------|------|------|--------| 
+| ​​PwmSystem::new()​ | 初始化PWM系统，设置所有控制器的基地址	 | 无 | 返回初始化完成的PwmSystem实例 |
+| ​​PwmSystem::global_enable()​ | 全局使能所有已配置的PWM控制器 | 无 | 无 |
+| PwmSystem::controller()​ | 获取指定索引的PWM控制器实例 | index: usize - 控制器索引（0-7） | Option<&mut PwmController> - 成功返回控制器引用，无效索引返回None |
+| ​​PwmController::configure_channel()​ | 配置PWM通道参数 | channel: usize - 通道号（0或1）config: PwmConfig - 配置结构体（含频率、占空比等）| Result<(), &str> - 成功返回Ok(())，错误返回错误描述 |
+| PwmController::enable_channel()​ | 启用通道输出 | channel: usize - 通道号（0或1） | Result<(), &str> - 成功返回Ok(())，无效通道返回错误 |
+| PwmController::disable_channel()​ | 禁用通道输出 | channel: usize - 通道号（0或1） | 无 |
+| PwmController::safe_stop_channel()​ | 安全停止通道（完成当前周期） | channel: usize - 通道号（0或1） | Result<(), &str> - 成功返回Ok(())，超时返回错误 |
+| PwmController::push_fifo_data()​ | 向FIFO模式通道推送占空比数据 | channel: usize - 通道号（0或1）, duty: u16 - 占空比值 | Result<(), &str> - 成功返回Ok(())，FIFO满返回错误 |
+| PwmController::handle_interrupt()​ | 处理控制器中断事件 | 无 | 无 |
+| PwmController::handle_channel_interrupt()​ | 处理单个通道中断 | channel: usize - 通道号（0或1） | 无 |
+
+**调用顺序**
+- 初始化系统​​
+  - PwmSystem::new() → 创建PWM系统实例
+- ​​配置通道​​
+  - PwmSystem::controller(index) → configure_channel(channel, config)需先获取控制器，再配置具体通道
+- ​启用通道​​
+  - enable_channel(channel) → 激活输出
+- 全局使能​​
+  - global_enable() → 启动所有已配置控制器
+- 运行时操作​​
+  - FIFO数据更新：push_fifo_data(channel, duty_value)
+  - 安全停止：safe_stop_channel(channel)
+  - 中断处理：handle_interrupt()
+- 禁用通道​​
+  - disable_channel(channel) → 立即停止输出
+
+**错误处理**
+| 错误场景 | 错误返回值 | 原因 |
+| ------- | -------- | ------- |
+| 无效通道号 | Err("Invalid channel number") | 通道号超出有效范围（0-1） |
+| 占空比超限 | Err("Duty cycle must be between 0.0 and 1.0") | 占空比值超出有效范围（0.0-1.0） |
+| 周期值过大 | Err("Period value too large") | 周期值超过最大限制（0xFFFF） |
+| FIFO已满 | Err("FIFO is full") | 向FIFO模式通道推送数据时，FIFO已满 |
+| 安全停止超时 | 隐含超时（未显式返回） | 安全停止操作超时（未完成当前周期） |
+
+**关键错误处理逻辑**：
+- **配置阶段**：参数校验严格（如占空比范围、周期值溢出）
+- **运行时**：状态检查（如FIFO满标志）
+- **安全停止**：阻塞等待周期完成（while tim_cnt != 0）
+
+
+## 3. 飞腾派PWM驱动相关寄存器结构
+本节详细描述飞腾派中用于配置和控制PWM相关硬件模块的寄存器，为PWM驱动实现提供清晰的硬件映射。
+
+### 3.1寄存器组
+- **寄存器分类**：主要分成四类，控制，状态，数据，中断。值得注意的是这里的中断并非专门分出一个寄存器使能控制，而是通过寄存器中的位来使能中断，下表中有详细说明。
+
+| 寄存器 | 偏移/位（中断） | 描述 |
+| --- | --- | --- |
+| **控制寄存器** | **CTRL** | **配置PWM模式、使能、时钟源等** |
+| DBCTRL | 0x00 | 死区模式控制（输出模式、极性选择、软复位） |
+| TIM_CTRL | 0x404/0x808 | 计数模式、分频参数、全局使能、软复位 |
+| PWM_CTRL | 0x410/0x810 | PWM工作模式（比较操作、Duty值来源、中断使能） |
+| DBDLY（相对特殊） | 0x04 | 控制PWM输出信号的边沿延时​​，选择死区作用模式和输出极性 |
+| **状态寄存器** | **STATUS** | **反映PWM内部状态和中断标志** |
+| STATE | 0x408/0x808 | FIFO状态标志（如FIFO_FULL） |
+| **数据寄存器** | **DATA** | **存储计数器值和周期参数** |
+| TIM_CNT | 0x400/0x800 | 内部Timer计数值 |
+| PWM_PERIOD | 0x40C/0x80C | 周期寄存器（控制计数范围） |
+| PWM_CCR | 0x414/0x814 | 比较值寄存器（控制Duty）|
+| **中断寄存器** | **INT** | **配置中断使能和触发条件** |
+| STATE.FIFO_EMPTY | 2 | 只有在选择使用 FIFO 作为 duty 控制，且 FIFO 为空的时候，产生中断|
+| STATE.OVFIF | 1 | 计数中断，不同计数模式下有不同定义<br>modulo：当计数值达到 PWM_PERIOD 寄存器值时，产生中断<br>up and down：当 PWM_PERIOD 非 0，此时，若计数值递减为 0的时候，产生中断(但整体处于复位时候不产生)，若PWM_PERIOD 为 0，无中断<br>注意：计数是在分频后的时钟域，产生的中断脉冲信号相对于 clk_fio 会很宽，为了避免重复对状态寄存器赋值，使用上升沿检测来置位|
+| STATE.CHIF | 0 | compare 中断标志，写 1 清除|
+| TIM_CTRL.GIE | 5 | 全局中断使能，写 1 使能，写 0 禁用|
+| TIM_CTRL.OVFIE | 4 | counter-overflow 中断使能控制位|
+| PWM_CTRL.FIFO_EMPTY_ENABLE | 9 | 在 compare 模式下，FIFO 出现空的时候，中断输出使能控制位，1 表示使能，0 表示非使能，即使非使能，FIFO 空的时候也要置位状态寄存器相关位，但不输出中断|
+| PWM_CTRL.IE | 3 | 中断使能位，用来控制是否产生 compare 中断。该位为 0 表示 compare 中断使能无效，1 表示 compare 中断使能有效|
+
+### 3.2寄存器块基地址
+3.1中主要是描述一个PWM控制器的寄存器组，每个控制器都有3.1中描述的一套寄存器组各自进行控制，而3.2则是对八个控制器的基地址进行描述
+
+| 控制器 | 基地址 |
+| --- | --- |
+| PWM0 | 0x000_2804_A000 |
+| PWM1 | 0x000_2804_B000 |
+| PWM2 | 0x000_2804_C000 |
+| PWM3 | 0x000_2804_D000 |
+| PWM4 | 0x000_2804_E000 |
+| PWM5 | 0x000_2804_F000 |
+| PWM6 | 0x000_2805_0000 |
+| PWM7 | 0x000_2805_1000 |
+
+得到了每个控制器的基地址，就可以通过基地址和偏移量来访问每个控制器的寄存器了。
+
+### 3.3寄存器位域
+| 域 | 位 | 复位值 | 描述 |
+| --- | --- | --- | --- |
+| **DBCTRL** |  |  |  |
+| reserved | 31:6 | 0x0 | 保留 |
+| OUT_MODE | 5:4 | 0x0 | 死带输出模式控制：<br>00：bypass<br>01：禁用上升沿延迟，pwm0_out 直接输出，下降沿延迟作用在 pwm1_out<br>10：禁用下降沿延迟，pwm1_out 直接输出，上升沿延迟作用在 pwm0_out<br>11：pwm0_out 上升沿和 pwm1_out 下降沿都完全启用死带 |
+| POLSEL | 3:2 | 0x0 | 极性选择控制：<br>00：active high(AH) pwm0_out 和 pwm1_out 都不翻转<br>01：active low complementary(ALC) pwm0_out 翻转<br>10：active high complementary(AHC) pwm1_out 翻转<br>11：active low(AL) pwm0_out 和 pwm1_out 都翻转 |
+| IN_MODE | 1 | 0x0 | 死区输入 pwm 源选择：<br>0：pwm0 输入<br>1：pwm1 输入 |
+| DB_SW_RST | 0 | 0x0 | 全局软复位信号，软件写 1，部件实现全局软复位，复位完成后，自动跳出软复位<br>软件读取到 1 的时候，表示处于复位中<br>软件读取到 0 的时候，表示跳出复位，可以进行功能操作。 |
+| **DBDLY** |  |  |  |
+| reserved | 31:20 | 0x0 | 保留 |
+| DBFED | 19:10 | 0x0 | 下降沿延迟周期 |
+| DBRED | 9:0 | 0x0 | 上升沿延迟周期 |
+| **tim_cnt** |  |  |  |
+| reserved | 31:16 | 0x0 | 保留 |
+| cnt | 15:0 | 0x0 | 计数标志 |
+| **tim_ctrl** |  |  |  |
+| reserved | 31:28 | 0x0 | 保留 |
+| DIV | 27:16 | 0x0 | 分频参数<br>0：1 分频<br>1：2 分频<br>…<br>支持分频范围：1~4096 |
+| reserved | 15:6 | 0x0 | 保留 |
+| GIE | 5 | 0x0 | 全局中断使能控制位 |
+| OVFIE | 4 | 0x0 | counter-overflow中断使能控制位 |
+| reserved | 3 | 0x0 | 保留 |
+| Mode | 2 | 0x0 | 计数模式<br>0：modulo<br>1：up and down<br>工作中，计数模式的修改，需要先 disable 全局，修改后再 enable |
+| ENABLE | 1 | 0x0 | 使全局使能位<br>1 表示全局使能，0 表示不使能<br>0：diable，计数器清零，compare 停止工作，输出复位值，寄存器内容保持原值；<br>1：enable，Timer&PWM 正常工作<br>若需要暂停 Timer/PWM 工作，可通过该位控制。 |
+| SW_RST | 0 | 0x0 | 全局软复位信号，软件写 1，部件实现全局软复位，复位完成后，自动跳出软复位。<br>软件读取到 1 的时候，表示处于复位中<br>软件读取到 0 的时候，表示跳出复位，可以进行功能操作 |
+| **state** |  |  |  |
+| reserved | 31:4 | 0x0 | 保留 |
+| FIFO_FULL | 3 | 0x0 | 该位显示当前 FIFO 满的情况，但是不作为中断输出，在软件向 FIFO 中写数据的时候作为前提，若检测到该位是 1，则此时不允许写数据，否则 APB 总线可能会被堵塞，但是 FIFOfull 不会输出中断 |
+| FIFO_EMPTY | 2 | 0x0 | 只有在选择使用 FIFO 作为 duty 控制，且 FIFO 为空的时候，产生中断 |
+| OVFIF | 1 | 0x0 | 计数中断，不同计数模式下有不同定义<br>modulo：当计数值达到 PWM_PERIOD 寄存器值时，产生中断<br>up and down：当 PWM_PERIOD 非 0，此时，若计数值递减为 0 的时候，产生中断(但整体处于复位时候不产生)，若PWM_PERIOD 为 0，无中断<br>注意：计数是在分频后的时钟域，产生的中断脉冲信号相对于 clk_fio 会很宽，为了避免重复对状态寄存器赋值，使用上升沿检测来置位。 |
+| CHIF | 0 | 0x0 | compare 中断标志位,写 1 清除 |
+| **pwm_period** |  |  |  |
+| reserved | 31:16 | 0x0 | 保留 |
+| CCR | 15:0 | 0x0 | 计数控制功能，在非Free-running 模式线下，该值是用来控制 counter 归零等情况的，即 period 寄存器；该寄存器的值支持工作中动态调整（compare 模式下，实际输出 period 周期数为此值+1） |
+| **pwm_ctrl** |  |  |  |
+| reserved | 31:10 | 0x0 | 保留 |
+| FIFO_EMPTY_ENABLE | 9 | 0x0 | 在 compare 模式下，FIFO 出现空的时候，中断输出使能控制位，1 表示使能，0 表示非使能，即使非使能，FIFO 空的时候也要置位状态寄存器相关位，但不输出中断 |
+| DUTY_SEL | 8 | 0x0 | compare 模式下，控制 duty 的比较值的来源<br>0：来自寄存器 PWM_CCR；<br>1：来自 FIFO，fifo 值由 PWM_CCR.ccr 写入<br>duty 值来自寄存器的时候，只在上一个 pwm 周期结束的时候 load 当前 pwm_ccr 寄存器的值，比如说在一个 pwm 周期内多次写这个寄存器，那么只有最后一个值有效；来自 FIFO时，当 FIFO 非满时，这些值会存储在 FIFO 内，硬件在每个pwm 周期结束时自动读出做为下一次的 duty 值 |
+| ICOV | 7 | 0x0 | 在 compare 模式下，配置 PWM 输出的初始值，跳出全局复位后，初始值根据当前设定，在 enable 信号使能之前，需先配置好该值 |
+| CMP | 6:4 | 0x0 | 比较操作配置。<br>000：比较匹配时输出置 1<br>001：比较匹配时输出清 0<br>010：比较匹配时输出翻转<br>011：向上计数且比较匹配时输出置 1。然后在 up-and-down 模式向下计数且比较匹配时输出清 0，其他模式则在计数到 0 时输出清 0;<br>100：向上计数且比较匹配时输出清 0。然后在 up-and-down模式向下计数且比较匹配时输出置 1，其他模式则在计数到 0 时输出置 1;<br>101 ： 计 数 值 等 于 PWM_CCR.ccr 时 输 出 清 0 ， 等 于pwm_period.ccr 时输出置 1;<br>110 ： 计 数 值 等 于PWM_CCR.ccr 时 输 出 置 1 ， 等于 pwm_period.ccr 时输出清 0;<br>111：输出管脚初始化<br>说明：对于“010：比较匹配时输出翻转”，比较匹配是指counter 值变化后匹配；如果初始值相同，不算比较匹配上;<br>对于“000：比较匹配时输出置 1”、“001：比较匹配时输出清 0”、“101”和“110”不涉及一直翻转的模式，比较匹配是指 counter 值初次匹配。<br>对于“011”“100”比较匹配也指 counter 值初次匹配，但是否跳变，还要看当前计数器的计数方向。|
+| IE | 3 | 0x0 | 中断使能位，用来控制是否产生 compare 中断<br>该位为 0 表示 compare 中断使能无效，1 表示 compare 中断使能有效。 |
+| Mode | 2 | 0x0 | 1：比较模式 |
+| reserved | 1 | 0x0 | 保留 |
+| **pwm_ccr** |  |  |  |
+| reserved | 31:17 | 0x0 | 保留 |
+| GPIO | 16 | 0x0 | 输出GPIO控制位 |
+| CCR | 15:0 | 0x0 | compare 模式：该寄存器的值属于控制 duty cycle 的，此时，该值最小为 1，最大不能超过 pwm_period.ccr 的值 |
+
+## 4. 具体实现讲解
+本节详细讲解PWM驱动实现步骤，提供实用开发指南和代码示例
+### 4.1 飞腾派PWM驱动架构
+- **驱动类型**：本驱动适用于CEK8903飞腾派硬件开发板上针对ArceOS开发的PWM模块
+- **模块依赖**： 本驱动主要引入了tock_registers、cortex_m、core以及ArceOS的中断处理等库
+
+### 4.2 飞腾派PWM驱动初始化流程
+#### 硬件初始化
+1. **时钟配置**
+- 系统时钟频率通过常量 SYSTEM_CLK = 50_000_000 定义（50MHz），需确保与实际硬件一致。
+- PWM 时钟源通常来自 APB 总线（参考 STM32 时钟树设计），需确认芯片手册中 PWM 挂载的总线
+2. **引脚复用**
+- 通过 PwmConfig 结构体配置输出行为（如死区时间、极性），硬件自动处理引脚复用。
+- 例如：设置 deadtime_ns 会触发死区控制寄存器（DBCTRL 和 DBDLY）的写入
+3. **寄存器基址映射**
+- 将PWM控制器基地址按文档定义进行设置
+```rust
+const CONTROLLER_BASES: [usize; PWM_CONTROLLERS] = [
+            0x2804_A000, // PWM0
+            0x2804_B000, // PWM1
+            0x2804_C000, // PWM2
+            0x2804_D000, // PWM3
+            0x2804_E000, // PWM4
+            0x2804_F000, // PWM5
+            0x2805_0000, // PWM6
+            0x2805_1000, // PWM7
+];
+```
+- 通过 PwmRegisters 结构体访问寄存器，利用内存映射 I/O 直接操作硬件。
+
+#### 软件初始化
+1. **层级结构（三级）**
+- **PwmSystem**​​：管理系统所有 PWM 控制器（8个）
+```rust
+pub struct PwmSystem {
+    controllers: [PwmController; PWM_CONTROLLERS],
+}
+```
+- **PwmController**：管理单个 PWM 控制器的两个通道，负责初始化和配置单个 PWM 模块
+```rust
+pub struct PwmController {
+    base: usize,
+    channels: [PwmChannel; CHANNELS_PER_CONTROLLER],
+}
+```
+- **PwmChannel**：存储通道配置（频率、占空比等）
+```rust
+pub struct PwmChannel {
+    config: Option<PwmConfig>,
+    enabled: bool,
+}
+```
+2. **中断注册​**：
+- 中断处理函数 ​pwm_interrupt_handler 需注册到系统
+```rust
+fn pwm_interrupt_handler(controller_idx: usize) {
+    if let Some(ctrl) = pwm_system.controller(controller_idx) {
+        ctrl.handle_interrupt();
+    }
+}
+```
+- 通过 handle_interrupt 方法处理三类中断
+  - FIFO 空中断（自动填充数据）
+  - 计数器溢出中断
+  - 比较匹配中断
+- 中断标志清除采用RW1c（写1清除）
